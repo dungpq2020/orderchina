@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
 import EditStaffModal from "./EditStaffModal";
 
@@ -13,6 +14,18 @@ function PersonIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
       <path d="M10 10a4 4 0 100-8 4 4 0 000 8zM2 18a8 8 0 1116 0H2z" />
+    </svg>
+  );
+}
+
+function CoinIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.75a.75.75 0 00-1.5 0v.318a2.75 2.75 0 00-1.75 2.557c0 1.19.7 1.966 2.058 2.376l1.184.358c.687.208.758.51.758.681 0 .372-.41.68-1 .68-.61 0-1.036-.313-1.126-.68a.75.75 0 00-1.457.363c.222.906.98 1.523 1.833 1.71v.317a.75.75 0 001.5 0v-.318a2.75 2.75 0 001.75-2.556c0-1.19-.7-1.967-2.058-2.376l-1.184-.359c-.687-.208-.758-.51-.758-.68 0-.373.41-.68 1-.68.61 0 1.036.312 1.126.68a.75.75 0 101.457-.364c-.222-.905-.98-1.522-1.833-1.71v-.317z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -81,6 +94,7 @@ export interface StaffListItem {
   fullName: string;
   role: number;
   status: number;
+  walletBalance: number;
   createdAtUtc: string;
   createdByUsername: string | null;
   updatedAtUtc: string | null;
@@ -94,23 +108,11 @@ interface StaffListResult {
   pageSize: number;
 }
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "unauthenticated" }
-  | { status: "error"; message: string }
-  | { status: "ready"; data: StaffListResult; accessToken: string };
-
 const PAGE_SIZE = 20;
 
 export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPageProps) {
-  const [state, setState] = useState<LoadState>({ status: "loading" });
-  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<StaffListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const stateRef = useRef(state);
-  const pageRef = useRef(page);
-  stateRef.current = state;
-  pageRef.current = page;
 
   useEffect(() => {
     if (!toast) return;
@@ -118,84 +120,26 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const loadPage = useCallback(
-    async (targetPage: number, accessToken: string) => {
-      const staffRes = await fetch(`${adminApiBaseUrl}/staff/list?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+  const fetchStaff = useCallback(
+    async (targetPage: number, accessToken: string): Promise<StaffListResult> => {
+      const res = await fetch(`${adminApiBaseUrl}/staff/list?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!staffRes.ok) {
-        setState({ status: "error", message: `Lỗi tải danh sách (status ${staffRes.status}).` });
-        return;
+      if (!res.ok) {
+        throw new Error(`Lỗi tải danh sách (status ${res.status}).`);
       }
 
-      const data = (await staffRes.json()) as StaffListResult;
-      setState({ status: "ready", data, accessToken });
+      return (await res.json()) as StaffListResult;
     },
     [adminApiBaseUrl],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrap() {
-      try {
-        const refreshRes = await fetch(`${adminApiBaseUrl}/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-        });
-
-        if (!refreshRes.ok) {
-          if (!cancelled) setState({ status: "unauthenticated" });
-          return;
-        }
-
-        const { accessToken } = (await refreshRes.json()) as { accessToken: string };
-        if (!cancelled) await loadPage(1, accessToken);
-      } catch {
-        if (!cancelled) setState({ status: "error", message: "Không kết nối được tới máy chủ." });
-      }
-    }
-
-    bootstrap();
-    return () => {
-      cancelled = true;
-    };
-  }, [adminApiBaseUrl, loadPage]);
-
-  // Tự tải lại dữ liệu khi quay lại tab để dữ liệu luôn gần với thời gian thực nhất có thể.
-  useEffect(() => {
-    function handleVisible() {
-      if (document.visibilityState !== "visible") return;
-      const current = stateRef.current;
-      if (current.status !== "ready") return;
-      loadPage(pageRef.current, current.accessToken);
-    }
-
-    document.addEventListener("visibilitychange", handleVisible);
-    window.addEventListener("focus", handleVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisible);
-      window.removeEventListener("focus", handleVisible);
-    };
-  }, [loadPage]);
-
-  useEffect(() => {
-    if (state.status === "unauthenticated") {
-      window.location.href = loginUrl;
-    }
-  }, [state.status, loginUrl]);
-
-  async function handleLogout() {
-    await fetch(`${adminApiBaseUrl}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
-    window.location.href = loginUrl;
-  }
-
-  function goToPage(targetPage: number) {
-    if (state.status !== "ready") return;
-    setPage(targetPage);
-    loadPage(targetPage, state.accessToken);
-  }
+  const { state, page, goToPage, logout, setState } = useAuthenticatedList<StaffListResult>({
+    adminApiBaseUrl,
+    loginUrl,
+    fetchPage: fetchStaff,
+  });
 
   function handleStaffSaved(updated: Partial<StaffListItem> & { id: string }) {
     setState((prev) => {
@@ -222,7 +166,7 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
 
   if (state.status === "error") {
     return (
-      <AdminLayout title="Danh sách nhân viên" onLogout={handleLogout}>
+      <AdminLayout title="Danh sách nhân viên" onLogout={logout}>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{state.message}</p>
       </AdminLayout>
     );
@@ -232,14 +176,14 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
 
   return (
-    <AdminLayout title="Danh sách nhân viên" onLogout={handleLogout}>
+    <AdminLayout title="Danh sách nhân viên" onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách nhân viên ({data.totalCount})
       </h1>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-orange-300 text-zinc-700">
+          <thead className="border-b border-zinc-200 bg-orange-400 text-white font-semibold">
             <tr>
               <th className="px-4 py-3 font-medium">Thông tin tài khoản</th>
               <th className="px-4 py-3 font-medium">Thông tin cá nhân</th>
@@ -267,6 +211,10 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs">
                     <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass(s.status)}`} />
                     <span className={`font-medium ${statusTextClass(s.status)}`}>{statusLabel(s.status)}</span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                    <CoinIcon className="h-3.5 w-3.5 text-amber-500" />
+                    {s.walletBalance.toLocaleString("vi-VN")} VNĐ
                   </div>
                 </td>
                 <td className="px-4 py-3">

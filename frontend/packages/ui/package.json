@@ -5,6 +5,7 @@
   "sideEffects": false,
   "exports": {
     "./components/*": "./src/components/*.tsx",
+    "./hooks/*": "./src/hooks/*.ts",
     "./assets/*": "./src/assets/*"
   },
   "peerDependencies": {

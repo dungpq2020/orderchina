@@ -121,8 +121,8 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
 
   if (result && redirecting) {
     return (
-      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm dark:border-green-900 dark:bg-green-950">
-        <p className="font-medium text-green-800 dark:text-green-300">
+      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm">
+        <p className="font-medium text-green-800">
           Đăng nhập thành công — đang chuyển sang trang quản trị...
         </p>
       </div>
@@ -131,14 +131,14 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
 
   if (result) {
     return (
-      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm dark:border-green-900 dark:bg-green-950">
-        <p className="font-medium text-green-800 dark:text-green-300">
+      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm">
+        <p className="font-medium text-green-800">
           Đăng nhập thành công ({result.accountType === "admin" ? "tài khoản nhân viên" : "tài khoản khách hàng"})
         </p>
-        <p className="mt-2 break-all text-xs text-green-700 dark:text-green-400">
+        <p className="mt-2 break-all text-xs text-green-700">
           Access token: {result.data.accessToken.slice(0, 40)}...
         </p>
-        <p className="mt-1 text-xs text-green-700 dark:text-green-400">
+        <p className="mt-1 text-xs text-green-700">
           Hết hạn lúc: {new Date(result.data.expiresAtUtc).toLocaleString()}
         </p>
       </div>
@@ -146,12 +146,12 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
   }
 
   const inputClasses =
-    "w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-50 dark:focus:border-blue-400 dark:focus:bg-zinc-800";
+    "w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10";
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/50"
+      className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10"
     >
       {/* Dải màu thương hiệu (xanh -> cam theo logo) làm điểm nhấn phía trên card */}
       <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 to-orange-500" />
@@ -164,13 +164,13 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
           </div>
         </div>
 
-        <h1 className="text-center text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-center text-lg font-semibold text-zinc-900">
           Đăng nhập
         </h1>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <label className="text-sm font-medium text-zinc-600">
               Tài khoản
             </label>
             <input
@@ -187,7 +187,7 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <label className="text-sm font-medium text-zinc-600">
               Mật khẩu
             </label>
             <PasswordInput
@@ -205,7 +205,7 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
 
           {requiresTwoFactor && (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              <label className="text-sm font-medium text-zinc-600">
                 Mã xác thực 2 lớp
               </label>
               <input
@@ -218,7 +218,7 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </p>
         )}
@@ -232,10 +232,10 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
         </button>
 
         <div className="flex items-center justify-between text-sm">
-          <Link href="/register" className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+          <Link href="/register" className="font-medium text-blue-600 hover:underline">
             Đăng ký tài khoản
           </Link>
-          <Link href="/forgot-password" className="text-zinc-500 hover:underline dark:text-zinc-400">
+          <Link href="/forgot-password" className="text-zinc-500 hover:underline">
             Quên mật khẩu
           </Link>
         </div>

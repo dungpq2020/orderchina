@@ -21,7 +21,7 @@ interface RegisterErrorBody {
 }
 
 const inputClasses =
-  "w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-50 dark:focus:border-blue-400 dark:focus:bg-zinc-800";
+  "w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10";
 
 export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) {
   const [username, setUsername] = useState("");
@@ -63,12 +63,12 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
 
   if (success) {
     return (
-      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm dark:border-green-900 dark:bg-green-950">
-        <p className="font-medium text-green-800 dark:text-green-300">Đăng ký thành công</p>
-        <p className="mt-2 break-all text-xs text-green-700 dark:text-green-400">
+      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm">
+        <p className="font-medium text-green-800">Đăng ký thành công</p>
+        <p className="mt-2 break-all text-xs text-green-700">
           Access token: {success.accessToken.slice(0, 40)}...
         </p>
-        <Link href="/login" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
+        <Link href="/login" className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline">
           Về trang đăng nhập
         </Link>
       </div>
@@ -78,7 +78,7 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/50"
+      className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl shadow-zinc-900/10"
     >
       <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 to-orange-500" />
 
@@ -89,11 +89,11 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
           </div>
         </div>
 
-        <h1 className="text-center text-lg font-semibold text-zinc-900 dark:text-zinc-50">Đăng ký tài khoản</h1>
+        <h1 className="text-center text-lg font-semibold text-zinc-900">Đăng ký tài khoản</h1>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Tài khoản</label>
+            <label className="text-sm font-medium text-zinc-600">Tài khoản</label>
             <input
               className={inputClasses}
               value={username}
@@ -108,7 +108,7 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Họ tên</label>
+            <label className="text-sm font-medium text-zinc-600">Họ tên</label>
             <input
               className={inputClasses}
               value={fullName}
@@ -123,7 +123,7 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Email</label>
+            <label className="text-sm font-medium text-zinc-600">Email</label>
             <input
               type="email"
               className={inputClasses}
@@ -139,7 +139,7 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Số điện thoại</label>
+            <label className="text-sm font-medium text-zinc-600">Số điện thoại</label>
             <input
               type="tel"
               className={inputClasses}
@@ -155,7 +155,7 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Mật khẩu</label>
+            <label className="text-sm font-medium text-zinc-600">Mật khẩu</label>
             <PasswordInput
               className={inputClasses}
               value={password}
@@ -172,7 +172,7 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
             {error}
           </p>
         )}
@@ -185,9 +185,9 @@ export default function RegisterForm({ customerApiBaseUrl }: RegisterFormProps) 
           {loading ? "Đang đăng ký..." : "Đăng ký"}
         </button>
 
-        <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-center text-sm text-zinc-500">
           Đã có tài khoản?{" "}
-          <Link href="/login" className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+          <Link href="/login" className="font-medium text-blue-600 hover:underline">
             Đăng nhập
           </Link>
         </p>

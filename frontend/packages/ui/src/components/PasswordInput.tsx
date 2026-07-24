@@ -18,7 +18,7 @@ export default function PasswordInput({ className = "", ...props }: PasswordInpu
         onClick={() => setVisible((v) => !v)}
         tabIndex={-1}
         aria-label={visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-zinc-400 hover:text-zinc-600"
       >
         {visible ? (
           // eye-off

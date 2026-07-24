@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
 import EditCustomerModal from "./EditCustomerModal";
 
@@ -103,23 +104,11 @@ interface CustomerListResult {
   pageSize: number;
 }
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "unauthenticated" }
-  | { status: "error"; message: string }
-  | { status: "ready"; data: CustomerListResult; accessToken: string };
-
 const PAGE_SIZE = 20;
 
 export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: CustomerListPageProps) {
-  const [state, setState] = useState<LoadState>({ status: "loading" });
-  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<CustomerListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const stateRef = useRef(state);
-  const pageRef = useRef(page);
-  stateRef.current = state;
-  pageRef.current = page;
 
   useEffect(() => {
     if (!toast) return;
@@ -127,87 +116,26 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const loadPage = useCallback(
-    async (targetPage: number, accessToken: string) => {
-      const customersRes = await fetch(`${adminApiBaseUrl}/customers?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+  const fetchCustomers = useCallback(
+    async (targetPage: number, accessToken: string): Promise<CustomerListResult> => {
+      const res = await fetch(`${adminApiBaseUrl}/customers?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!customersRes.ok) {
-        setState({ status: "error", message: `Lỗi tải danh sách (status ${customersRes.status}).` });
-        return;
+      if (!res.ok) {
+        throw new Error(`Lỗi tải danh sách (status ${res.status}).`);
       }
 
-      const data = (await customersRes.json()) as CustomerListResult;
-      setState({ status: "ready", data, accessToken });
+      return (await res.json()) as CustomerListResult;
     },
     [adminApiBaseUrl],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrap() {
-      try {
-        // Dùng refresh token cookie (đã set sẵn từ lúc login qua trang chung /login) để lấy access
-        // token mới — admin-web không tự giữ session nào khác, luôn refresh khi tải trang.
-        const refreshRes = await fetch(`${adminApiBaseUrl}/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-        });
-
-        if (!refreshRes.ok) {
-          if (!cancelled) setState({ status: "unauthenticated" });
-          return;
-        }
-
-        const { accessToken } = (await refreshRes.json()) as { accessToken: string };
-        if (!cancelled) await loadPage(1, accessToken);
-      } catch {
-        if (!cancelled) setState({ status: "error", message: "Không kết nối được tới máy chủ." });
-      }
-    }
-
-    bootstrap();
-    return () => {
-      cancelled = true;
-    };
-  }, [adminApiBaseUrl, loadPage]);
-
-  // Tự tải lại dữ liệu khi quay lại tab (chuyển sang tab khác rồi mở lại) để dữ liệu luôn
-  // gần với thời gian thực nhất có thể, không cần bấm F5 thủ công.
-  useEffect(() => {
-    function handleVisible() {
-      if (document.visibilityState !== "visible") return;
-      const current = stateRef.current;
-      if (current.status !== "ready") return;
-      loadPage(pageRef.current, current.accessToken);
-    }
-
-    document.addEventListener("visibilitychange", handleVisible);
-    window.addEventListener("focus", handleVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisible);
-      window.removeEventListener("focus", handleVisible);
-    };
-  }, [loadPage]);
-
-  useEffect(() => {
-    if (state.status === "unauthenticated") {
-      window.location.href = loginUrl;
-    }
-  }, [state.status, loginUrl]);
-
-  async function handleLogout() {
-    await fetch(`${adminApiBaseUrl}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
-    window.location.href = loginUrl;
-  }
-
-  function goToPage(targetPage: number) {
-    if (state.status !== "ready") return;
-    setPage(targetPage);
-    loadPage(targetPage, state.accessToken);
-  }
+  const { state, page, goToPage, logout, setState } = useAuthenticatedList<CustomerListResult>({
+    adminApiBaseUrl,
+    loginUrl,
+    fetchPage: fetchCustomers,
+  });
 
   function handleCustomerSaved(updated: Partial<CustomerListItem> & { id: string }) {
     setState((prev) => {
@@ -234,7 +162,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
   if (state.status === "error") {
     return (
-      <AdminLayout title="Danh sách khách hàng" onLogout={handleLogout}>
+      <AdminLayout title="Danh sách khách hàng" onLogout={logout}>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{state.message}</p>
       </AdminLayout>
     );
@@ -244,14 +172,14 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
 
   return (
-    <AdminLayout title="Danh sách khách hàng" onLogout={handleLogout}>
+    <AdminLayout title="Danh sách khách hàng" onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách khách hàng ({data.totalCount})
       </h1>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-orange-300 text-zinc-700">
+          <thead className="border-b border-zinc-200 bg-orange-400 text-white font-semibold">
             <tr>
               <th className="px-4 py-3 font-medium">Thông tin tài khoản</th>
               <th className="px-4 py-3 font-medium">Thông tin cá nhân</th>
