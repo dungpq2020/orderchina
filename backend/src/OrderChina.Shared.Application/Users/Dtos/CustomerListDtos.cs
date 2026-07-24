@@ -26,7 +26,10 @@ public record CustomerListItem(
     string UserType,
     int Status,
     int Role,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    string? CreatedByUsername,
+    DateTime? UpdatedAtUtc,
+    string? UpdatedByUsername);
 
 public record CustomerListResult(IReadOnlyList<CustomerListItem> Items, int TotalCount, int Page, int PageSize);
 

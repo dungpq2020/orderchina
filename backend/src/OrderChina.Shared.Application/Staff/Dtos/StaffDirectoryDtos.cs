@@ -6,9 +6,14 @@ public record StaffDirectoryListItem(
     string? Email,
     string? PhoneNumber,
     string FullName,
+    string? Address,
     int Role,
     int Status,
-    DateTime CreatedAtUtc);
+    decimal WalletBalance,
+    DateTime CreatedAtUtc,
+    string? CreatedByUsername,
+    DateTime? UpdatedAtUtc,
+    string? UpdatedByUsername);
 
 public record StaffDirectoryListResult(IReadOnlyList<StaffDirectoryListItem> Items, int TotalCount, int Page, int PageSize);
 
@@ -16,6 +21,7 @@ public record UpdateStaffRequest(
     string FullName,
     string? Email,
     string? PhoneNumber,
+    string? Address,
     string? NewPassword,
     int Status,
     int Role);

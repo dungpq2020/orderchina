@@ -38,7 +38,9 @@ public class CustomerDirectoryService : ICustomerDirectoryService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var staffIds = users.SelectMany(u => new[] { u.SalesStaffId, u.OrderStaffId }).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        var staffIds = users
+            .SelectMany(u => new[] { u.SalesStaffId, u.OrderStaffId, u.CreatedByUserId, u.UpdatedByUserId })
+            .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
         var warehouseIds = users.SelectMany(u => new[] { u.ChinaWarehouseId, u.VietnamWarehouseId }).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
         var shippingMethodIds = users.Where(u => u.ShippingMethodId.HasValue).Select(u => u.ShippingMethodId!.Value).Distinct().ToList();
 
@@ -160,6 +162,8 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         user.Status = (AccountStatus)request.Status;
         user.Role = newRole;
         user.UserType = newRole == Role.Customer ? UserType.Customer : UserType.Staff;
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        user.UpdatedByUserId = actingUserId;
 
         var updateResult = await _userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
@@ -239,6 +243,12 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         string? shippingMethodName = user.ShippingMethodId is { } shippingId
             ? await _dbContext.ShippingMethods.Where(s => s.Id == shippingId).Select(s => s.Name).FirstOrDefaultAsync(cancellationToken)
             : null;
+        string? createdByUsername = user.CreatedByUserId is { } createdById
+            ? await _dbContext.Users.Where(u => u.Id == createdById).Select(u => u.UserName).FirstOrDefaultAsync(cancellationToken)
+            : null;
+        string? updatedByUsername = user.UpdatedByUserId is { } updatedById
+            ? await _dbContext.Users.Where(u => u.Id == updatedById).Select(u => u.UserName).FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         return new CustomerListItem(
             user.Id,
@@ -266,7 +276,10 @@ public class CustomerDirectoryService : ICustomerDirectoryService
             user.UserType.ToString(),
             (int)user.Status,
             (int)user.Role,
-            user.CreatedAtUtc);
+            user.CreatedAtUtc,
+            createdByUsername,
+            user.UpdatedAtUtc,
+            updatedByUsername);
     }
 
     private static CustomerListItem ToListItem(
@@ -299,7 +312,10 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         user.UserType.ToString(),
         (int)user.Status,
         (int)user.Role,
-        user.CreatedAtUtc);
+        user.CreatedAtUtc,
+        user.CreatedByUserId is { } createdById ? staffNames.GetValueOrDefault(createdById) : null,
+        user.UpdatedAtUtc,
+        user.UpdatedByUserId is { } updatedById ? staffNames.GetValueOrDefault(updatedById) : null);
 
     private static bool IsStrongPassword(string password)
     {

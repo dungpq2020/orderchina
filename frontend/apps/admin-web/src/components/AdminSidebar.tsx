@@ -23,7 +23,7 @@ const GROUPS: SidebarGroup[] = [
     title: "TÀI KHOẢN",
     items: [
       { label: "Danh sách khách", href: "/userlist" },
-      { label: "Danh sách admin" },
+      { label: "Danh sách admin", href: "/adminlist" },
       { label: "Danh sách nhân viên", href: "/stafflist" },
       { label: "Tài khoản mua hàng" },
       { label: "Quản lý hoa hồng" },
@@ -66,7 +66,7 @@ export default function AdminSidebar({ currentPath, mobileOpen, onCloseMobile }:
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
         {GROUPS.map((group) => (
           <div key={group.title}>
-            <p className="mb-2 px-2 text-xs font-semibold tracking-wide text-blue-600">{group.title}</p>
+            <p className="mb-2 px-2 text-sm font-bold tracking-wide text-blue-800">{group.title}</p>
             <ul className="space-y-1">
               {group.items.map((item) => {
                 const isActive = !!item.href && currentPath.startsWith(item.href);
@@ -91,7 +91,7 @@ export default function AdminSidebar({ currentPath, mobileOpen, onCloseMobile }:
                       onClick={onCloseMobile}
                       className={`block rounded-lg px-2 py-2 text-sm font-medium transition ${
                         isActive
-                          ? "bg-orange-500 text-white"
+                          ? "bg-orange-300 text-white"
                           : "text-black hover:bg-zinc-100"
                       }`}
                     >

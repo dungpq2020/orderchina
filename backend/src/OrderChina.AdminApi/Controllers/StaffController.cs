@@ -49,6 +49,30 @@ public class StaffController : ControllerBase
         return Ok(result.Staff);
     }
 
+    [HttpGet("admins")]
+    public async Task<IActionResult> GetAdmins([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    {
+        var result = await _staffDirectoryService.GetAdminsAsync(page, pageSize, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPut("admins/{id:guid}")]
+    public async Task<IActionResult> UpdateAdmin(Guid id, [FromBody] UpdateStaffRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+        {
+            return BadRequest(new { error = "Vui lòng nhập họ tên." });
+        }
+
+        var result = await _staffDirectoryService.UpdateAdminAsync(id, request, GetCurrentUserId(), cancellationToken);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        return Ok(result.Staff);
+    }
+
     private Guid GetCurrentUserId()
     {
         var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value

@@ -18,6 +18,14 @@ public class ApplicationUser : IdentityUser<Guid>
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Id người tạo (1 Staff) — null nếu tự đăng ký qua CustomerApi hoặc do hệ thống seed.</summary>
+    public Guid? CreatedByUserId { get; set; }
+
+    public DateTime? UpdatedAtUtc { get; set; }
+
+    /// <summary>Id người cập nhật gần nhất (1 Staff) — set mỗi lần Update qua AdminApi.</summary>
+    public Guid? UpdatedByUserId { get; set; }
+
     /// <summary>
     /// Trạng thái tài khoản — chỉ Active mới được phép đăng nhập (kiểm tra trong AuthService.LoginAsync).
     /// Mặc định Active để không chặn khách hàng đã tự đăng ký qua CustomerApi.

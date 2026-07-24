@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AdminLayout from "./AdminLayout";
 import EditStaffModal from "./EditStaffModal";
 
@@ -82,6 +82,9 @@ export interface StaffListItem {
   role: number;
   status: number;
   createdAtUtc: string;
+  createdByUsername: string | null;
+  updatedAtUtc: string | null;
+  updatedByUsername: string | null;
 }
 
 interface StaffListResult {
@@ -104,6 +107,10 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<StaffListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const stateRef = useRef(state);
+  const pageRef = useRef(page);
+  stateRef.current = state;
+  pageRef.current = page;
 
   useEffect(() => {
     if (!toast) return;
@@ -155,6 +162,23 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
       cancelled = true;
     };
   }, [adminApiBaseUrl, loadPage]);
+
+  // Tự tải lại dữ liệu khi quay lại tab để dữ liệu luôn gần với thời gian thực nhất có thể.
+  useEffect(() => {
+    function handleVisible() {
+      if (document.visibilityState !== "visible") return;
+      const current = stateRef.current;
+      if (current.status !== "ready") return;
+      loadPage(pageRef.current, current.accessToken);
+    }
+
+    document.addEventListener("visibilitychange", handleVisible);
+    window.addEventListener("focus", handleVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisible);
+      window.removeEventListener("focus", handleVisible);
+    };
+  }, [loadPage]);
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -215,19 +239,20 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-200 bg-orange-50 text-zinc-500">
+          <thead className="border-b border-zinc-200 bg-orange-300 text-zinc-700">
             <tr>
               <th className="px-4 py-3 font-medium">Thông tin tài khoản</th>
               <th className="px-4 py-3 font-medium">Thông tin cá nhân</th>
               <th className="px-4 py-3 font-medium">Quyền hạn</th>
               <th className="px-4 py-3 font-medium">Ngày tạo</th>
+              <th className="px-4 py-3 font-medium">Ngày cập nhật</th>
               <th className="px-4 py-3 font-medium">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {data.items.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
                   Chưa có nhân viên nào.
                 </td>
               </tr>
@@ -259,7 +284,20 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
                   </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-zinc-700">{roleLabel(s.role)}</td>
-                <td className="px-4 py-3 text-zinc-500">{new Date(s.createdAtUtc).toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-zinc-500">
+                  <div>{new Date(s.createdAtUtc).toLocaleString()}</div>
+                  <div className="mt-1 text-zinc-400">{s.createdByUsername ?? "—"}</div>
+                </td>
+                <td className="px-4 py-3 text-xs text-zinc-500">
+                  {s.updatedAtUtc ? (
+                    <>
+                      <div>{new Date(s.updatedAtUtc).toLocaleString()}</div>
+                      <div className="mt-1 text-zinc-400">{s.updatedByUsername ?? "—"}</div>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => setEditing(s)}
