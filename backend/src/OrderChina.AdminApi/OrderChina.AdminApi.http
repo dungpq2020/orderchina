@@ -1,0 +1,6 @@
+@OrderChina.AdminApi_HostAddress = http://localhost:5274
+
+GET {{OrderChina.AdminApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

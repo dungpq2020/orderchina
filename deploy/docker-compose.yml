@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-orderchina}
+      POSTGRES_USER: ${POSTGRES_USER:-orderchina}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orderchina}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrator:
+    build:
+      context: ../backend
+      dockerfile: src/OrderChina.Migrator/Dockerfile
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-orderchina};Username=${POSTGRES_USER:-orderchina};Password=${POSTGRES_PASSWORD}"
+      # Chỉ dùng để seed tài khoản Staff đầu tiên lần đầu chạy — bỏ trống thì Migrator sẽ bỏ qua seed.
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+    networks: [backend-net]
+
+  admin-api:
+    build:
+      context: ../backend
+      dockerfile: src/OrderChina.AdminApi/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      PathBase: "/admin/api"
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-orderchina};Username=${POSTGRES_USER:-orderchina};Password=${POSTGRES_PASSWORD}"
+      Jwt__Issuer: ${JWT_ISSUER:-orderchina-ng}
+      Jwt__RsaPrivateKeyBase64: ${JWT_RSA_PRIVATE_KEY_BASE64}
+    networks: [backend-net]
+
+  customer-api:
+    build:
+      context: ../backend
+      dockerfile: src/OrderChina.CustomerApi/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      PathBase: "/api"
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-orderchina};Username=${POSTGRES_USER:-orderchina};Password=${POSTGRES_PASSWORD}"
+      Jwt__Issuer: ${JWT_ISSUER:-orderchina-ng}
+      Jwt__RsaPrivateKeyBase64: ${JWT_RSA_PRIVATE_KEY_BASE64}
+    networks: [backend-net]
+
+  admin-web:
+    build:
+      context: ../frontend/admin-web
+    restart: unless-stopped
+    depends_on: [admin-api]
+    networks: [frontend-net]
+
+  customer-web:
+    build:
+      context: ../frontend/customer-web
+    restart: unless-stopped
+    depends_on: [customer-api]
+    networks: [frontend-net]
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot-webroot:/var/www/certbot:ro
+      - letsencrypt:/etc/letsencrypt:ro
+    networks: [frontend-net, backend-net]
+    depends_on: [admin-web, customer-web, admin-api, customer-api]
+
+  # Chạy thủ công khi cần lấy/renew chứng chỉ, không phải service chạy nền liên tục:
+  #   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d <domain> --email <email> --agree-tos --no-eff-email
+  #   docker compose run --rm certbot renew
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    networks: [frontend-net]
+
+networks:
+  frontend-net: {}
+  backend-net: {}
+
+volumes:
+  pgdata: {}
+  certbot-webroot: {}
+  letsencrypt: {}

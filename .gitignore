@@ -1,0 +1,18 @@
+# .NET
+backend/**/bin/
+backend/**/obj/
+*.user
+
+# Node / Next.js
+frontend/**/node_modules/
+frontend/**/.next/
+frontend/**/npm-debug.log*
+
+# Env / secrets — KHÔNG commit
+deploy/.env
+**/.env
+**/.env.local
+!**/.env.example
+
+# macOS
+.DS_Store
