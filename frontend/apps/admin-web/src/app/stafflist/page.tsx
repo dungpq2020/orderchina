@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import CustomerListPage from "@/components/CustomerListPage";
+import StaffListPage from "@/components/StaffListPage";
 
 export const metadata: Metadata = {
-  title: "Danh sách khách hàng",
+  title: "Danh sách nhân viên",
 };
 
-export default function UserListPage() {
+export default function StaffListRoute() {
   return (
-    <CustomerListPage
+    <StaffListPage
       adminApiBaseUrl={process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL ?? ""}
       loginUrl={process.env.NEXT_PUBLIC_LOGIN_URL ?? "/login"}
     />

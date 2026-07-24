@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminLayout from "./AdminLayout";
-import EditCustomerModal from "./EditCustomerModal";
+import EditStaffModal from "./EditStaffModal";
 
-interface CustomerListPageProps {
+interface StaffListPageProps {
   adminApiBaseUrl: string;
   loginUrl: string;
 }
@@ -13,18 +13,6 @@ function PersonIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
       <path d="M10 10a4 4 0 100-8 4 4 0 000 8zM2 18a8 8 0 1116 0H2z" />
-    </svg>
-  );
-}
-
-function CoinIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
-      <path
-        fillRule="evenodd"
-        d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.75a.75.75 0 00-1.5 0v.318a2.75 2.75 0 00-1.75 2.557c0 1.19.7 1.966 2.058 2.376l1.184.358c.687.208.758.51.758.681 0 .372-.41.68-1 .68-.61 0-1.036-.313-1.126-.68a.75.75 0 00-1.457.363c.222.906.98 1.523 1.833 1.71v.317a.75.75 0 001.5 0v-.318a2.75 2.75 0 001.75-2.556c0-1.19-.7-1.967-2.058-2.376l-1.184-.359c-.687-.208-.758-.51-.758-.68 0-.373.41-.68 1-.68.61 0 1.036.312 1.126.68a.75.75 0 101.457-.364c-.222-.905-.98-1.522-1.833-1.71v-.317z"
-        clipRule="evenodd"
-      />
     </svg>
   );
 }
@@ -64,37 +52,40 @@ function statusTextClass(status: number): string {
   return "text-green-600";
 }
 
-export interface CustomerListItem {
+export function roleLabel(role: number): string {
+  switch (role) {
+    case 0:
+      return "Admin";
+    case 1:
+      return "Khách hàng";
+    case 2:
+      return "Nhân viên kinh doanh";
+    case 3:
+      return "Nhân viên mua hàng";
+    case 4:
+      return "Nhân viên kho Trung Quốc";
+    case 5:
+      return "Nhân viên kho Việt Nam";
+    case 6:
+      return "Kế toán";
+    default:
+      return "—";
+  }
+}
+
+export interface StaffListItem {
   id: string;
   username: string;
   email: string | null;
   phoneNumber: string | null;
   fullName: string;
-  address: string | null;
-  tier: number;
-  walletBalance: number;
-  customExchangeRate: number | null;
-  customPurchaseFeePercent: number | null;
-  customWeightFeePerKg: number | null;
-  customVolumeFeePerCbm: number | null;
-  salesStaffId: string | null;
-  salesStaffName: string | null;
-  orderStaffId: string | null;
-  orderStaffName: string | null;
-  chinaWarehouseId: string | null;
-  chinaWarehouseName: string | null;
-  vietnamWarehouseId: string | null;
-  vietnamWarehouseName: string | null;
-  shippingMethodId: string | null;
-  shippingMethodName: string | null;
-  userType: string;
-  status: number;
   role: number;
+  status: number;
   createdAtUtc: string;
 }
 
-interface CustomerListResult {
-  items: CustomerListItem[];
+interface StaffListResult {
+  items: StaffListItem[];
   totalCount: number;
   page: number;
   pageSize: number;
@@ -104,14 +95,14 @@ type LoadState =
   | { status: "loading" }
   | { status: "unauthenticated" }
   | { status: "error"; message: string }
-  | { status: "ready"; data: CustomerListResult; accessToken: string };
+  | { status: "ready"; data: StaffListResult; accessToken: string };
 
 const PAGE_SIZE = 20;
 
-export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: CustomerListPageProps) {
+export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPageProps) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState<CustomerListItem | null>(null);
+  const [editing, setEditing] = useState<StaffListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -122,16 +113,16 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
   const loadPage = useCallback(
     async (targetPage: number, accessToken: string) => {
-      const customersRes = await fetch(`${adminApiBaseUrl}/customers?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+      const staffRes = await fetch(`${adminApiBaseUrl}/staff/list?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!customersRes.ok) {
-        setState({ status: "error", message: `Lỗi tải danh sách (status ${customersRes.status}).` });
+      if (!staffRes.ok) {
+        setState({ status: "error", message: `Lỗi tải danh sách (status ${staffRes.status}).` });
         return;
       }
 
-      const data = (await customersRes.json()) as CustomerListResult;
+      const data = (await staffRes.json()) as StaffListResult;
       setState({ status: "ready", data, accessToken });
     },
     [adminApiBaseUrl],
@@ -142,8 +133,6 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
     async function bootstrap() {
       try {
-        // Dùng refresh token cookie (đã set sẵn từ lúc login qua trang chung /login) để lấy access
-        // token mới — admin-web không tự giữ session nào khác, luôn refresh khi tải trang.
         const refreshRes = await fetch(`${adminApiBaseUrl}/auth/refresh`, {
           method: "POST",
           credentials: "include",
@@ -184,14 +173,14 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
     loadPage(targetPage, state.accessToken);
   }
 
-  function handleCustomerSaved(updated: Partial<CustomerListItem> & { id: string }) {
+  function handleStaffSaved(updated: Partial<StaffListItem> & { id: string }) {
     setState((prev) => {
       if (prev.status !== "ready") return prev;
       return {
         ...prev,
         data: {
           ...prev.data,
-          items: prev.data.items.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
+          items: prev.data.items.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)),
         },
       };
     });
@@ -209,7 +198,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
   if (state.status === "error") {
     return (
-      <AdminLayout title="Danh sách khách hàng" onLogout={handleLogout}>
+      <AdminLayout title="Danh sách nhân viên" onLogout={handleLogout}>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{state.message}</p>
       </AdminLayout>
     );
@@ -219,9 +208,9 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
 
   return (
-    <AdminLayout title="Danh sách khách hàng" onLogout={handleLogout}>
+    <AdminLayout title="Danh sách nhân viên" onLogout={handleLogout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
-        Danh sách khách hàng ({data.totalCount})
+        Danh sách nhân viên ({data.totalCount})
       </h1>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -230,8 +219,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
             <tr>
               <th className="px-4 py-3 font-medium">Thông tin tài khoản</th>
               <th className="px-4 py-3 font-medium">Thông tin cá nhân</th>
-              <th className="px-4 py-3 font-medium">Nhân viên</th>
-              <th className="px-4 py-3 font-medium">Thông tin kho</th>
+              <th className="px-4 py-3 font-medium">Quyền hạn</th>
               <th className="px-4 py-3 font-medium">Ngày tạo</th>
               <th className="px-4 py-3 font-medium">Thao tác</th>
             </tr>
@@ -239,56 +227,42 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
           <tbody>
             {data.items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
-                  Chưa có khách hàng nào.
+                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
+                  Chưa có nhân viên nào.
                 </td>
               </tr>
             )}
-            {data.items.map((c) => (
-              <tr key={c.id} className="border-b border-zinc-100 last:border-0 align-top">
+            {data.items.map((s) => (
+              <tr key={s.id} className="border-b border-zinc-100 last:border-0 align-top">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5 font-semibold text-blue-600">
                     <PersonIcon className="h-3.5 w-3.5 text-blue-500" />
-                    {c.username}
+                    {s.username}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-                    <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass(c.status)}`} />
-                    <span className={`font-medium ${statusTextClass(c.status)}`}>{statusLabel(c.status)}</span>
-                    <span className="text-zinc-300">·</span>
-                    <span className="font-medium text-orange-500">VIP {c.tier}</span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-600">
-                    <CoinIcon className="h-3.5 w-3.5 text-amber-500" />
-                    {c.walletBalance.toLocaleString("vi-VN")} VNĐ
+                    <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass(s.status)}`} />
+                    <span className={`font-medium ${statusTextClass(s.status)}`}>{statusLabel(s.status)}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5 font-semibold text-zinc-900">
                     <PersonIcon className="h-3.5 w-3.5 text-zinc-400" />
-                    {c.fullName}
+                    {s.fullName}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-600">
                     <PhoneIcon className="h-3.5 w-3.5 text-green-500" />
-                    {c.phoneNumber ?? "—"}
+                    {s.phoneNumber ?? "—"}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500">
                     <MailIcon className="h-3.5 w-3.5 text-zinc-400" />
-                    {c.email ?? "—"}
+                    {s.email ?? "—"}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-xs text-zinc-700">
-                  <div>Đặt hàng: {c.orderStaffName ?? "—"}</div>
-                  <div className="mt-1.5">Kinh doanh: {c.salesStaffName ?? "—"}</div>
-                </td>
-                <td className="px-4 py-3 text-xs text-zinc-700">
-                  <div>Kho TQ: {c.chinaWarehouseName ?? "—"}</div>
-                  <div className="mt-1.5">Kho VN: {c.vietnamWarehouseName ?? "—"}</div>
-                  <div className="mt-1.5">PPVC: {c.shippingMethodName ?? "—"}</div>
-                </td>
-                <td className="px-4 py-3 text-zinc-500">{new Date(c.createdAtUtc).toLocaleString()}</td>
+                <td className="px-4 py-3 text-xs text-zinc-700">{roleLabel(s.role)}</td>
+                <td className="px-4 py-3 text-zinc-500">{new Date(s.createdAtUtc).toLocaleString()}</td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => setEditing(c)}
+                    onClick={() => setEditing(s)}
                     className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-200"
                   >
                     Cập nhật
@@ -303,7 +277,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
       {data.totalCount > 0 && (
         <div className="mt-4 flex items-center justify-between text-sm text-zinc-600">
           <span>
-            Trang {data.page}/{totalPages} — {data.totalCount} khách hàng
+            Trang {data.page}/{totalPages} — {data.totalCount} nhân viên
           </span>
           <div className="flex gap-2">
             <button
@@ -325,12 +299,12 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
       )}
 
       {editing && (
-        <EditCustomerModal
-          customer={editing}
+        <EditStaffModal
+          staff={editing}
           adminApiBaseUrl={adminApiBaseUrl}
           accessToken={accessToken}
           onClose={() => setEditing(null)}
-          onSaved={handleCustomerSaved}
+          onSaved={handleStaffSaved}
         />
       )}
 

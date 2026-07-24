@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderChina.Shared.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OrderChina.Shared.Infrastructure.Persistence;
 namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724072504_AddCustomerAddress")]
+    partial class AddCustomerAddress
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -415,10 +418,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("address");
 
-                    b.Property<Guid?>("ChinaWarehouseId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("china_warehouse_id");
-
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text")
@@ -427,22 +426,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
-
-                    b.Property<decimal?>("CustomExchangeRate")
-                        .HasColumnType("numeric")
-                        .HasColumnName("custom_exchange_rate");
-
-                    b.Property<decimal?>("CustomPurchaseFeePercent")
-                        .HasColumnType("numeric")
-                        .HasColumnName("custom_purchase_fee_percent");
-
-                    b.Property<decimal?>("CustomVolumeFeePerCbm")
-                        .HasColumnType("numeric")
-                        .HasColumnName("custom_volume_fee_per_cbm");
-
-                    b.Property<decimal?>("CustomWeightFeePerKg")
-                        .HasColumnType("numeric")
-                        .HasColumnName("custom_weight_fee_per_kg");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -477,10 +460,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("normalized_user_name");
 
-                    b.Property<Guid?>("OrderStaffId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("order_staff_id");
-
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
@@ -497,29 +476,9 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("require_two_factor");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("integer")
-                        .HasColumnName("role");
-
-                    b.Property<Guid?>("SalesStaffId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sales_staff_id");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text")
                         .HasColumnName("security_stamp");
-
-                    b.Property<Guid?>("ShippingMethodId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("shipping_method_id");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<int>("Tier")
-                        .HasColumnType("integer")
-                        .HasColumnName("tier");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean")
@@ -534,14 +493,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("user_type");
 
-                    b.Property<Guid?>("VietnamWarehouseId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("vietnam_warehouse_id");
-
-                    b.Property<decimal>("WalletBalance")
-                        .HasColumnType("numeric")
-                        .HasColumnName("wallet_balance");
-
                     b.HasKey("Id")
                         .HasName("pk_users");
 
@@ -553,56 +504,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("OrderChina.Shared.Domain.Shipping.ShippingMethod", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id")
-                        .HasName("pk_shipping_methods");
-
-                    b.ToTable("shipping_methods", (string)null);
-                });
-
-            modelBuilder.Entity("OrderChina.Shared.Domain.Warehouses.Warehouse", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("name");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id")
-                        .HasName("pk_warehouses");
-
-                    b.ToTable("warehouses", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>

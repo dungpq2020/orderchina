@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OrderChina.Shared.Domain.Auth;
 using OrderChina.Shared.Domain.Identity;
+using OrderChina.Shared.Domain.Shipping;
+using OrderChina.Shared.Domain.Warehouses;
 using OrderChina.Shared.Infrastructure.DependencyInjection;
 using OrderChina.Shared.Infrastructure.Persistence;
 
@@ -20,6 +22,9 @@ await dbContext.Database.MigrateAsync();
 Console.WriteLine("Migrations applied successfully.");
 
 await SeedAsync(scope.ServiceProvider, dbContext);
+await SeedMasterDataAsync(dbContext);
+await SeedStaffAsync(scope.ServiceProvider);
+await FixupRolesAsync(dbContext);
 
 static async Task SeedAsync(IServiceProvider services, AppDbContext dbContext)
 {
@@ -66,6 +71,7 @@ static async Task SeedAsync(IServiceProvider services, AppDbContext dbContext)
         Email = seedEmail,
         FullName = "Super Admin",
         UserType = UserType.Staff,
+        Role = Role.Admin,
         CreatedAtUtc = DateTime.UtcNow,
         EmailConfirmed = true
     };
@@ -88,4 +94,108 @@ static async Task SeedAsync(IServiceProvider services, AppDbContext dbContext)
     await dbContext.SaveChangesAsync();
 
     Console.WriteLine($"Đã seed tài khoản Staff đầu tiên: {seedUsername} (thuộc nhóm {superAdminGroupName}).");
+}
+
+static async Task SeedMasterDataAsync(AppDbContext dbContext)
+{
+    if (!await dbContext.Warehouses.AnyAsync())
+    {
+        dbContext.Warehouses.AddRange(
+            new Warehouse { Id = Guid.NewGuid(), Name = "Bằng Tường", Type = WarehouseType.China, IsActive = true },
+            new Warehouse { Id = Guid.NewGuid(), Name = "Hà Nội", Type = WarehouseType.Vietnam, IsActive = true });
+        await dbContext.SaveChangesAsync();
+        Console.WriteLine("Đã seed danh sách Kho Trung Quốc/Việt Nam.");
+    }
+
+    if (!await dbContext.ShippingMethods.AnyAsync())
+    {
+        dbContext.ShippingMethods.Add(
+            new ShippingMethod { Id = Guid.NewGuid(), Name = "Line TMĐT", IsActive = true });
+        await dbContext.SaveChangesAsync();
+        Console.WriteLine("Đã seed danh sách Phương thức vận chuyển.");
+    }
+}
+
+static async Task SeedStaffAsync(IServiceProvider services)
+{
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    const string seedStaffPassword = "Staff@12345678";
+
+    var staffToSeed = new (string Username, string FullName, Role Role)[]
+    {
+        ("sale1", "Nhân viên Kinh doanh 1", Role.SalesStaff),
+        ("sale2", "Nhân viên Kinh doanh 2", Role.SalesStaff),
+        ("sale3", "Nhân viên Kinh doanh 3", Role.SalesStaff),
+        ("order1", "Nhân viên Đặt hàng 1", Role.PurchasingStaff),
+        ("order2", "Nhân viên Đặt hàng 2", Role.PurchasingStaff),
+        ("order3", "Nhân viên Đặt hàng 3", Role.PurchasingStaff),
+    };
+
+    foreach (var (username, fullName, role) in staffToSeed)
+    {
+        var existing = await userManager.FindByNameAsync(username);
+        if (existing is not null)
+        {
+            continue;
+        }
+
+        var staffUser = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            UserName = username,
+            Email = $"{username}@orderchina.internal",
+            FullName = fullName,
+            UserType = UserType.Staff,
+            Role = role,
+            CreatedAtUtc = DateTime.UtcNow,
+            EmailConfirmed = true
+        };
+
+        var createResult = await userManager.CreateAsync(staffUser, seedStaffPassword);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
+            Console.WriteLine($"Seed nhân viên '{username}' thất bại: {errors}");
+            continue;
+        }
+
+        Console.WriteLine($"Đã seed nhân viên: {username}.");
+    }
+}
+
+static async Task FixupRolesAsync(AppDbContext dbContext)
+{
+    // Backfill Role cho các tài khoản đã tạo trước khi cột Role tồn tại (mặc định về Customer).
+    var fixups = new (string Username, Role Role)[]
+    {
+        ("sale1", Role.SalesStaff),
+        ("sale2", Role.SalesStaff),
+        ("sale3", Role.SalesStaff),
+        ("order1", Role.PurchasingStaff),
+        ("order2", Role.PurchasingStaff),
+        ("order3", Role.PurchasingStaff),
+    };
+
+    var seedAdminUsername = Environment.GetEnvironmentVariable("SEED_ADMIN_USERNAME");
+    if (!string.IsNullOrWhiteSpace(seedAdminUsername))
+    {
+        fixups = fixups.Append((seedAdminUsername, Role.Admin)).ToArray();
+    }
+
+    var changed = false;
+    foreach (var (username, role) in fixups)
+    {
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.UserName == username);
+        if (user is not null && user.Role != role)
+        {
+            user.Role = role;
+            changed = true;
+        }
+    }
+
+    if (changed)
+    {
+        await dbContext.SaveChangesAsync();
+        Console.WriteLine("Đã cập nhật Role cho các tài khoản Staff đã tồn tại.");
+    }
 }

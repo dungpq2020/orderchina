@@ -16,15 +16,15 @@ interface SidebarGroup {
 
 const GROUPS: SidebarGroup[] = [
   {
-    title: "TỔNG QUAN",
-    items: [{ label: "Trang điều khiển" }, { label: "Cài đặt" }],
+    title: "HỆ THỐNG",
+    items: [{ label: "Tổng quan" }, { label: "Cài đặt" }],
   },
   {
     title: "TÀI KHOẢN",
     items: [
-      { label: "Danh sách khách hàng", href: "/userlist" },
+      { label: "Danh sách khách", href: "/userlist" },
       { label: "Danh sách admin" },
-      { label: "Danh sách nhân viên" },
+      { label: "Danh sách nhân viên", href: "/stafflist" },
       { label: "Tài khoản mua hàng" },
       { label: "Quản lý hoa hồng" },
     ],
@@ -59,7 +59,7 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ currentPath, mobileOpen, onCloseMobile }: AdminSidebarProps) {
   const content = (
     <div className="flex h-full flex-col bg-white">
-      <div className="flex items-center gap-2 border-b border-zinc-200 px-4 py-4">
+      <div className="flex items-center justify-center border-b border-zinc-200 px-4 py-4">
         <Image src={logo} alt="Logo" priority className="h-8 w-auto" />
       </div>
 

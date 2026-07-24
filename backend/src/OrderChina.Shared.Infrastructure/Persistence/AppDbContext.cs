@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OrderChina.Shared.Domain.Auth;
 using OrderChina.Shared.Domain.Identity;
+using OrderChina.Shared.Domain.Shipping;
+using OrderChina.Shared.Domain.Warehouses;
 
 namespace OrderChina.Shared.Infrastructure.Persistence;
 
@@ -23,6 +25,8 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>, IDataPro
     public DbSet<UserGroupMembership> UserGroupMemberships => Set<UserGroupMembership>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<LoginAuditLog> LoginAuditLogs => Set<LoginAuditLog>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<ShippingMethod> ShippingMethods => Set<ShippingMethod>();
 
     public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys => Set<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>();
 

@@ -8,12 +8,18 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderChina.Shared.Application.Auth;
 using OrderChina.Shared.Application.Auth.Validators;
+using OrderChina.Shared.Application.Shipping;
+using OrderChina.Shared.Application.Staff;
 using OrderChina.Shared.Application.Users;
+using OrderChina.Shared.Application.Warehouses;
 using OrderChina.Shared.Domain.Identity;
 using OrderChina.Shared.Infrastructure.Auth;
 using OrderChina.Shared.Infrastructure.Identity;
 using OrderChina.Shared.Infrastructure.Persistence;
+using OrderChina.Shared.Infrastructure.Shipping;
+using OrderChina.Shared.Infrastructure.Staff;
 using OrderChina.Shared.Infrastructure.Users;
+using OrderChina.Shared.Infrastructure.Warehouses;
 
 namespace OrderChina.Shared.Infrastructure.DependencyInjection;
 
@@ -42,6 +48,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICustomerDirectoryService, CustomerDirectoryService>();
+        services.AddScoped<IWarehouseDirectoryService, WarehouseDirectoryService>();
+        services.AddScoped<IShippingMethodDirectoryService, ShippingMethodDirectoryService>();
+        services.AddScoped<IStaffDirectoryService, StaffDirectoryService>();
 
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();

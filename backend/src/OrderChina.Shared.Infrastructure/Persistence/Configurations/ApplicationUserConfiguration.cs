@@ -14,7 +14,18 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
             .HasMaxLength(256)
             .IsRequired();
 
+        builder.Property(u => u.Address)
+            .HasMaxLength(500);
+
         builder.Property(u => u.UserType)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(u => u.Status)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(u => u.Role)
             .HasConversion<int>()
             .IsRequired();
     }

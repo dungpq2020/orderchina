@@ -52,6 +52,16 @@ public class AuthService : IAuthService
             return new AuthResult(false, null, "Username hoặc mật khẩu không đúng.");
         }
 
+        if (user.Status != AccountStatus.Active)
+        {
+            var reason = user.Status == AccountStatus.Locked ? "account_locked" : "account_not_activated";
+            var message = user.Status == AccountStatus.Locked
+                ? "Tài khoản đã bị khoá."
+                : "Tài khoản chưa được kích hoạt.";
+            await LogAttemptAsync(user.Id, request.Username, audience, succeeded: false, reason, cancellationToken);
+            return new AuthResult(false, null, message);
+        }
+
         if (user.TwoFactorEnabled)
         {
             if (string.IsNullOrWhiteSpace(request.TwoFactorCode))

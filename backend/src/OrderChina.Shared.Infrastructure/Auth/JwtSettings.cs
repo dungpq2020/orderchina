@@ -12,7 +12,7 @@ public class JwtSettings
     /// </summary>
     public string? RsaPrivateKeyBase64 { get; set; }
 
-    public int AccessTokenLifetimeMinutes { get; set; } = 15;
+    public int AccessTokenLifetimeMinutes { get; set; } = 10080;
 
-    public int RefreshTokenLifetimeDays { get; set; } = 14;
+    public int RefreshTokenLifetimeDays { get; set; } = 30;
 }

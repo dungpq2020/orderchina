@@ -1,6 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderChina.Shared.Application.Users;
+using OrderChina.Shared.Application.Users.Dtos;
 
 namespace OrderChina.AdminApi.Controllers;
 
@@ -26,5 +28,41 @@ public class CustomersController : ControllerBase
     {
         var result = await _customerDirectoryService.GetCustomersAsync(page, pageSize, cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] UpdateCustomerRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+        {
+            return BadRequest(new { error = "Vui lòng nhập họ tên." });
+        }
+
+        var result = await _customerDirectoryService.UpdateCustomerAsync(id, request, GetCurrentUserId(), cancellationToken);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        return Ok(result.Customer);
+    }
+
+    [HttpPost("{id:guid}/wallet/adjust")]
+    public async Task<IActionResult> AdjustWallet(Guid id, [FromBody] WalletAdjustRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _customerDirectoryService.AdjustWalletAsync(id, request, cancellationToken);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        return Ok(new { balance = result.NewBalance });
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+            ?? throw new InvalidOperationException("Missing sub claim.");
+        return Guid.Parse(sub);
     }
 }
