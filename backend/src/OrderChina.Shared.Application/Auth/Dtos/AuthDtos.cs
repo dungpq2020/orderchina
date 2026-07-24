@@ -2,7 +2,7 @@ namespace OrderChina.Shared.Application.Auth.Dtos;
 
 public record LoginRequest(string Username, string Password, string? TwoFactorCode, string? IpAddress, string? UserAgent);
 
-public record RegisterCustomerRequest(string Username, string Email, string Password, string FullName, string? IpAddress);
+public record RegisterCustomerRequest(string Username, string Email, string Password, string FullName, string PhoneNumber, string? IpAddress);
 
 public record RefreshRequest(string RefreshToken, string? IpAddress);
 

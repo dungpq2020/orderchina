@@ -6,6 +6,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-orderchina}
       POSTGRES_USER: ${POSTGRES_USER:-orderchina}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      # Chỉ bind 127.0.0.1 (không public ra internet) — dùng để SSH tunnel từ máy dev vào khi cần
+      # trỏ thẳng data thật, không mở port ra ngoài mạng.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [backend-net]
@@ -69,14 +73,16 @@ services:
 
   admin-web:
     build:
-      context: ../frontend/admin-web
+      context: ../frontend
+      dockerfile: apps/admin-web/Dockerfile
     restart: unless-stopped
     depends_on: [admin-api]
     networks: [frontend-net]
 
   customer-web:
     build:
-      context: ../frontend/customer-web
+      context: ../frontend
+      dockerfile: apps/customer-web/Dockerfile
     restart: unless-stopped
     depends_on: [customer-api]
     networks: [frontend-net]

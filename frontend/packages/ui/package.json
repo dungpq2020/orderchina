@@ -1,0 +1,14 @@
+{
+  "name": "@orderchina/ui",
+  "version": "0.0.0",
+  "private": true,
+  "sideEffects": false,
+  "exports": {
+    "./components/*": "./src/components/*.tsx",
+    "./assets/*": "./src/assets/*"
+  },
+  "peerDependencies": {
+    "next": "*",
+    "react": "*"
+  }
+}

@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto, CancellationToken cancellationToken)
     {
-        var request = new RegisterCustomerRequest(dto.Username, dto.Email, dto.Password, dto.FullName, GetClientIp());
+        var request = new RegisterCustomerRequest(dto.Username, dto.Email, dto.Password, dto.FullName, dto.PhoneNumber, GetClientIp());
 
         var validation = await _registerValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid)
@@ -173,7 +173,7 @@ public class AuthController : ControllerBase
     private string? GetClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 }
 
-public record RegisterRequestDto(string Username, string Email, string Password, string FullName);
+public record RegisterRequestDto(string Username, string Email, string Password, string FullName, string PhoneNumber);
 
 public record LoginRequestDto(string Username, string Password, string? TwoFactorCode);
 

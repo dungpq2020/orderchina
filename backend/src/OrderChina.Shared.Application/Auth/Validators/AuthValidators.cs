@@ -9,7 +9,7 @@ public static class PasswordRules
     {
         return rule
             .NotEmpty()
-            .MinimumLength(12).WithMessage("Mật khẩu phải có ít nhất 12 ký tự.")
+            .MinimumLength(8).WithMessage("Mật khẩu phải có ít nhất 8 ký tự.")
             .Matches("[A-Z]").WithMessage("Mật khẩu phải có ít nhất 1 chữ hoa.")
             .Matches("[a-z]").WithMessage("Mật khẩu phải có ít nhất 1 chữ thường.")
             .Matches("[0-9]").WithMessage("Mật khẩu phải có ít nhất 1 chữ số.")
@@ -44,6 +44,9 @@ public class RegisterCustomerRequestValidator : AbstractValidator<RegisterCustom
         RuleFor(x => x.Username).ValidUsername();
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
         RuleFor(x => x.FullName).NotEmpty().MaximumLength(256);
+        RuleFor(x => x.PhoneNumber)
+            .NotEmpty().WithMessage("Vui lòng nhập số điện thoại.")
+            .Matches(@"^(0|\+84)[0-9]{9,10}$").WithMessage("Số điện thoại không hợp lệ.");
         RuleFor(x => x.Password).StrongPassword();
     }
 }

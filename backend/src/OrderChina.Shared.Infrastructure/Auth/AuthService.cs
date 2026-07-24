@@ -162,11 +162,18 @@ public class AuthService : IAuthService
             return new AuthResult(false, null, "Email đã được sử dụng.");
         }
 
+        var existingByPhone = await _dbContext.Users.AnyAsync(u => u.PhoneNumber == request.PhoneNumber, cancellationToken);
+        if (existingByPhone)
+        {
+            return new AuthResult(false, null, "Số điện thoại đã được sử dụng.");
+        }
+
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
             UserName = request.Username,
             Email = request.Email,
+            PhoneNumber = request.PhoneNumber,
             FullName = request.FullName,
             UserType = UserType.Customer,
             CreatedAtUtc = DateTime.UtcNow

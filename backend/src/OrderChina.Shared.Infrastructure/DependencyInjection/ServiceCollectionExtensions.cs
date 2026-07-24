@@ -8,10 +8,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderChina.Shared.Application.Auth;
 using OrderChina.Shared.Application.Auth.Validators;
+using OrderChina.Shared.Application.Users;
 using OrderChina.Shared.Domain.Identity;
 using OrderChina.Shared.Infrastructure.Auth;
 using OrderChina.Shared.Infrastructure.Identity;
 using OrderChina.Shared.Infrastructure.Persistence;
+using OrderChina.Shared.Infrastructure.Users;
 
 namespace OrderChina.Shared.Infrastructure.DependencyInjection;
 
@@ -39,6 +41,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICustomerDirectoryService, CustomerDirectoryService>();
 
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
@@ -53,13 +56,13 @@ public static class ServiceCollectionExtensions
         services
             .AddIdentityCore<ApplicationUser>(options =>
             {
-                // Chính sách mật khẩu mạnh — tối thiểu 12 ký tự, đủ 4 loại, hạn chế ký tự lặp.
-                options.Password.RequiredLength = 12;
+                // Chính sách mật khẩu mạnh — tối thiểu 8 ký tự, đủ 4 loại, hạn chế ký tự lặp.
+                options.Password.RequiredLength = 8;
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
-                options.Password.RequiredUniqueChars = 6;
+                options.Password.RequiredUniqueChars = 5;
 
                 // Chống brute-force: khoá 15 phút sau 5 lần sai (đếm tự động qua SignInManager/UserManager).
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
