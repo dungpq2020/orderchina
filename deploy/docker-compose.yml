@@ -75,6 +75,8 @@ services:
     build:
       context: ../frontend
       dockerfile: apps/admin-web/Dockerfile
+      args:
+        NEXT_PUBLIC_LOGIN_URL: ${NEXT_PUBLIC_LOGIN_URL}
     restart: unless-stopped
     depends_on: [admin-api]
     networks: [frontend-net]

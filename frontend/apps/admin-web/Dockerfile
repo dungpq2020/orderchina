@@ -9,6 +9,8 @@ RUN npm ci
 
 FROM node:20-alpine AS build
 WORKDIR /app
+ARG NEXT_PUBLIC_LOGIN_URL
+ENV NEXT_PUBLIC_LOGIN_URL=${NEXT_PUBLIC_LOGIN_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build --workspace=admin-web
