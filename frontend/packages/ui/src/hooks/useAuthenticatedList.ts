@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clearSession, getAccessToken } from "../utils/authSession";
 
 export type AuthListState<T> =
   | { status: "loading" }
@@ -47,32 +48,24 @@ export function useAuthenticatedList<T>({ adminApiBaseUrl, loginUrl, fetchPage }
   const didBootstrapRef = useRef(false);
 
   useEffect(() => {
-    // Refresh token xoay vòng (mỗi lần gọi /auth/refresh sẽ vô hiệu hoá token cũ) — nếu effect này
-    // chạy 2 lần gần như đồng thời (React Strict Mode ở dev tự double-invoke effect: mount → cleanup
-    // → mount lại ngay trong cùng 1 tick), request thứ 2 sẽ dùng token đã bị token thứ 1 xoay vòng,
-    // bị hệ thống coi là "token bị dùng lại" và thu hồi toàn bộ phiên đăng nhập.
-    //
-    // Ref này đảm bảo chỉ có 1 lần gọi fetch thật sự (ref giữ nguyên giá trị qua cả 2 lần
-    // mount/cleanup của Strict Mode vì cùng 1 fiber). Cố tình KHÔNG dùng thêm cờ "cancelled" ở đây
-    // như pattern thông thường — vì cleanup giả của Strict Mode sẽ set cancelled=true trước khi
-    // fetch thật (từ lần mount đầu) kịp trả về, khiến kết quả hợp lệ bị bỏ qua và trang bị kẹt ở
-    // "loading" mãi mãi. Do ref đã đảm bảo effect này chỉ thực thi đúng 1 lần, không cần chặn thêm.
+    // getAccessToken cache token trong bộ nhớ theo adminApiBaseUrl (xem utils/authSession) — chỉ
+    // gọi /auth/refresh thật sự khi tab này chưa có token hợp lệ, nên chuyển qua lại giữa các trang
+    // trong cùng 1 tab không rotate refresh token cookie mỗi lần nữa (tránh race "reuse_detected"
+    // với tab khác khiến cả phiên bị thu hồi oan). Việc dedupe request đồng thời (kể cả React
+    // Strict Mode tự double-invoke effect ở dev) cũng nằm trong getAccessToken, nên ref này chỉ
+    // cần để tránh gọi loadPage 2 lần, không phải để chặn race refresh như trước.
     if (didBootstrapRef.current) return;
     didBootstrapRef.current = true;
 
     async function bootstrap() {
       try {
-        const refreshRes = await fetch(`${adminApiBaseUrl}/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-        });
+        const accessToken = await getAccessToken(adminApiBaseUrl);
 
-        if (!refreshRes.ok) {
+        if (!accessToken) {
           setState({ status: "unauthenticated" });
           return;
         }
 
-        const { accessToken } = (await refreshRes.json()) as { accessToken: string };
         await loadPage(1, accessToken);
       } catch {
         setState({ status: "error", message: "Không kết nối được tới máy chủ." });
@@ -83,12 +76,21 @@ export function useAuthenticatedList<T>({ adminApiBaseUrl, loginUrl, fetchPage }
   }, [adminApiBaseUrl, loadPage]);
 
   // Tự tải lại dữ liệu khi quay lại tab để dữ liệu luôn gần với thời gian thực nhất có thể.
+  // Đi qua getAccessToken (rẻ, thường chỉ đọc cache) thay vì dùng thẳng accessToken cũ trong state,
+  // để phát hiện được trường hợp tab khác vừa đăng xuất/thu hồi phiên trong lúc tab này không active.
   useEffect(() => {
     function handleVisible() {
       if (document.visibilityState !== "visible") return;
       const current = stateRef.current;
       if (current.status !== "ready") return;
-      loadPage(pageRef.current, current.accessToken);
+
+      getAccessToken(adminApiBaseUrl).then((accessToken) => {
+        if (!accessToken) {
+          setState({ status: "unauthenticated" });
+          return;
+        }
+        loadPage(pageRef.current, accessToken);
+      });
     }
 
     document.addEventListener("visibilitychange", handleVisible);
@@ -97,7 +99,7 @@ export function useAuthenticatedList<T>({ adminApiBaseUrl, loginUrl, fetchPage }
       document.removeEventListener("visibilitychange", handleVisible);
       window.removeEventListener("focus", handleVisible);
     };
-  }, [loadPage]);
+  }, [adminApiBaseUrl, loadPage]);
 
   useEffect(() => {
     if (state.status === "unauthenticated") {
@@ -113,6 +115,7 @@ export function useAuthenticatedList<T>({ adminApiBaseUrl, loginUrl, fetchPage }
 
   async function logout() {
     await fetch(`${adminApiBaseUrl}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+    clearSession(adminApiBaseUrl);
     window.location.href = loginUrl;
   }
 
