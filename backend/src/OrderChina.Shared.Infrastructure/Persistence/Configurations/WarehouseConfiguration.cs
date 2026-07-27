@@ -14,6 +14,9 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
             .HasMaxLength(256)
             .IsRequired();
 
+        builder.Property(w => w.Address)
+            .HasMaxLength(500);
+
         builder.Property(w => w.Type)
             .HasConversion<int>()
             .IsRequired();

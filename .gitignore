@@ -16,3 +16,7 @@ deploy/.env
 
 # macOS
 .DS_Store
+
+# Ảnh upload (không commit dữ liệu người dùng vào repo)
+backend/src/OrderChina.AdminApi/wwwroot/uploads/**
+!backend/src/OrderChina.AdminApi/wwwroot/uploads/**/.gitkeep

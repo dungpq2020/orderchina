@@ -60,6 +60,7 @@ if (!string.IsNullOrWhiteSpace(pathBase))
     app.UsePathBase(pathBase);
 }
 
+app.UseStaticFiles();
 app.UseRouting();
 
 if (app.Environment.IsDevelopment())

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
 import EditStaffModal from "./EditStaffModal";
+import { formatDateTime } from "@orderchina/ui/utils/formatDateTime";
 
 interface StaffListPageProps {
   adminApiBaseUrl: string;
@@ -166,7 +167,7 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
 
   if (state.status === "error") {
     return (
-      <AdminLayout title="Danh sách nhân viên" onLogout={logout}>
+      <AdminLayout title="Danh sách nhân viên" adminApiBaseUrl={adminApiBaseUrl} accessToken="" onLogout={logout}>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{state.message}</p>
       </AdminLayout>
     );
@@ -176,7 +177,7 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
 
   return (
-    <AdminLayout title="Danh sách nhân viên" onLogout={logout}>
+    <AdminLayout title="Danh sách nhân viên" adminApiBaseUrl={adminApiBaseUrl} accessToken={accessToken} onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách nhân viên ({data.totalCount})
       </h1>
@@ -233,13 +234,13 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
                 </td>
                 <td className="px-4 py-3 text-xs text-zinc-700">{roleLabel(s.role)}</td>
                 <td className="px-4 py-3 text-xs text-zinc-500">
-                  <div>{new Date(s.createdAtUtc).toLocaleString()}</div>
+                  <div>{formatDateTime(s.createdAtUtc)}</div>
                   <div className="mt-1 text-zinc-400">{s.createdByUsername ?? "—"}</div>
                 </td>
                 <td className="px-4 py-3 text-xs text-zinc-500">
                   {s.updatedAtUtc ? (
                     <>
-                      <div>{new Date(s.updatedAtUtc).toLocaleString()}</div>
+                      <div>{formatDateTime(s.updatedAtUtc)}</div>
                       <div className="mt-1 text-zinc-400">{s.updatedByUsername ?? "—"}</div>
                     </>
                   ) : (

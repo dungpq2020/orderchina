@@ -7,11 +7,13 @@ import AdminTopbar from "./AdminTopbar";
 
 interface AdminLayoutProps {
   title: string;
+  adminApiBaseUrl: string;
+  accessToken: string;
   onLogout: () => void;
   children: React.ReactNode;
 }
 
-export default function AdminLayout({ title, onLogout, children }: AdminLayoutProps) {
+export default function AdminLayout({ title, adminApiBaseUrl, accessToken, onLogout, children }: AdminLayoutProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -21,10 +23,16 @@ export default function AdminLayout({ title, onLogout, children }: AdminLayoutPr
         currentPath={pathname ?? ""}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        onLogout={onLogout}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopbar title={title} onOpenMobileMenu={() => setMobileOpen(true)} onLogout={onLogout} />
+        <AdminTopbar
+          title={title}
+          adminApiBaseUrl={adminApiBaseUrl}
+          accessToken={accessToken}
+          onOpenMobileMenu={() => setMobileOpen(true)}
+        />
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>

@@ -2,9 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import logo from "../assets/logo.png";
 import PasswordInput from "./PasswordInput";
+
+const REMEMBERED_LOGIN_STORAGE_KEY = "orderchina.rememberedLogin";
+
+interface RememberedLogin {
+  username: string;
+  password: string;
+}
+
+function readRememberedLogin(): RememberedLogin | null {
+  try {
+    const raw = window.localStorage.getItem(REMEMBERED_LOGIN_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as RememberedLogin) : null;
+  } catch {
+    return null;
+  }
+}
 
 interface UnifiedLoginFormProps {
   customerApiBaseUrl: string;
@@ -75,6 +91,28 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ accountType: "customer" | "admin"; data: LoginSuccess } | null>(null);
   const [redirecting, setRedirecting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Chỉ đọc localStorage sau khi mount (tránh lệch nội dung server-render/client-render của Next.js).
+  useEffect(() => {
+    const remembered = readRememberedLogin();
+    if (remembered) {
+      setUsername(remembered.username);
+      setPassword(remembered.password);
+      setRememberMe(true);
+    }
+  }, []);
+
+  function persistRememberedLogin() {
+    if (rememberMe) {
+      window.localStorage.setItem(
+        REMEMBERED_LOGIN_STORAGE_KEY,
+        JSON.stringify({ username, password } satisfies RememberedLogin),
+      );
+    } else {
+      window.localStorage.removeItem(REMEMBERED_LOGIN_STORAGE_KEY);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -85,6 +123,7 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
       const customerResult = await attemptLogin(customerApiBaseUrl, username, password, twoFactorCode);
 
       if (customerResult.kind === "success") {
+        persistRememberedLogin();
         setResult({ accountType: "customer", data: customerResult.data });
         return;
       }
@@ -99,6 +138,7 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
       const adminResult = await attemptLogin(adminApiBaseUrl, username, password, twoFactorCode);
 
       if (adminResult.kind === "success") {
+        persistRememberedLogin();
         setResult({ accountType: "admin", data: adminResult.data });
         setRedirecting(true);
         window.location.href = adminUserListUrl;
@@ -202,6 +242,16 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
               required
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-zinc-600">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500/30"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+            Lưu tài khoản
+          </label>
 
           {requiresTwoFactor && (
             <div className="space-y-1.5">

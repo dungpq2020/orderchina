@@ -30,6 +30,13 @@ public class CustomersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchCustomers([FromQuery] string q, CancellationToken cancellationToken)
+    {
+        var result = await _customerDirectoryService.SearchCustomersAsync(q ?? string.Empty, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] UpdateCustomerRequest request, CancellationToken cancellationToken)
     {

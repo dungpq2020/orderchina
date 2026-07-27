@@ -24,6 +24,12 @@ interface ShippingMethodOption {
   name: string;
 }
 
+interface UserLevelOption {
+  id: string;
+  name: string;
+  rank: number;
+}
+
 interface EditCustomerModalProps {
   customer: CustomerListItem;
   adminApiBaseUrl: string;
@@ -61,6 +67,7 @@ export default function EditCustomerModal({
   const [customPurchaseFeePercent, setCustomPurchaseFeePercent] = useState(toEmptyOr(customer.customPurchaseFeePercent));
   const [customWeightFeePerKg, setCustomWeightFeePerKg] = useState(toEmptyOr(customer.customWeightFeePerKg));
   const [customVolumeFeePerCbm, setCustomVolumeFeePerCbm] = useState(toEmptyOr(customer.customVolumeFeePerCbm));
+  const [customMinDepositPercent, setCustomMinDepositPercent] = useState(toEmptyOr(customer.customMinDepositPercent));
   const [salesStaffId, setSalesStaffId] = useState(customer.salesStaffId ?? "");
   const [orderStaffId, setOrderStaffId] = useState(customer.orderStaffId ?? "");
   const [chinaWarehouseId, setChinaWarehouseId] = useState(customer.chinaWarehouseId ?? "");
@@ -73,6 +80,7 @@ export default function EditCustomerModal({
   const [chinaWarehouses, setChinaWarehouses] = useState<WarehouseOption[]>([]);
   const [vietnamWarehouses, setVietnamWarehouses] = useState<WarehouseOption[]>([]);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethodOption[]>([]);
+  const [userLevels, setUserLevels] = useState<UserLevelOption[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -81,17 +89,19 @@ export default function EditCustomerModal({
     const headers = { Authorization: `Bearer ${accessToken}` };
 
     async function loadOptions() {
-      const [staffRes, chinaRes, vnRes, shippingRes] = await Promise.all([
+      const [staffRes, chinaRes, vnRes, shippingRes, userLevelRes] = await Promise.all([
         fetch(`${adminApiBaseUrl}/staff`, { headers }),
         fetch(`${adminApiBaseUrl}/warehouses?type=China`, { headers }),
         fetch(`${adminApiBaseUrl}/warehouses?type=Vietnam`, { headers }),
         fetch(`${adminApiBaseUrl}/shipping-methods`, { headers }),
+        fetch(`${adminApiBaseUrl}/user-level/list`, { headers }),
       ]);
 
       if (staffRes.ok) setStaffOptions(await staffRes.json());
       if (chinaRes.ok) setChinaWarehouses(await chinaRes.json());
       if (vnRes.ok) setVietnamWarehouses(await vnRes.json());
       if (shippingRes.ok) setShippingMethods(await shippingRes.json());
+      if (userLevelRes.ok) setUserLevels(await userLevelRes.json());
     }
 
     loadOptions().catch(() => {});
@@ -126,6 +136,7 @@ export default function EditCustomerModal({
           customPurchaseFeePercent: toNullableNumber(customPurchaseFeePercent),
           customWeightFeePerKg: toNullableNumber(customWeightFeePerKg),
           customVolumeFeePerCbm: toNullableNumber(customVolumeFeePerCbm),
+          customMinDepositPercent: toNullableNumber(customMinDepositPercent),
           salesStaffId: salesStaffId || null,
           orderStaffId: orderStaffId || null,
           chinaWarehouseId: chinaWarehouseId || null,
@@ -274,12 +285,14 @@ export default function EditCustomerModal({
                 />
               </div>
 
+              {/* Phí thể tích riêng tạm ẩn khỏi form — chưa dùng tới, giữ nguyên state/payload để không mất dữ liệu đã lưu. */}
+
               <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700">Phí thể tích riêng (VNĐ/m3)</label>
+                <label className="mb-1 block text-sm font-medium text-zinc-700">Phần trăm đặt cọc riêng (%)</label>
                 <input
                   type="number"
-                  value={customVolumeFeePerCbm}
-                  onChange={(e) => setCustomVolumeFeePerCbm(e.target.value)}
+                  value={customMinDepositPercent}
+                  onChange={(e) => setCustomMinDepositPercent(e.target.value)}
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -371,11 +384,14 @@ export default function EditCustomerModal({
                   onChange={(e) => setTier(Number(e.target.value))}
                   className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none"
                 >
-                  {[0, 1, 2, 3].map((t) => (
-                    <option key={t} value={t}>
-                      VIP {t}
-                    </option>
-                  ))}
+                  <option value={0}>— Chưa xếp hạng —</option>
+                  {[...userLevels]
+                    .sort((a, b) => a.rank - b.rank)
+                    .map((level) => (
+                      <option key={level.id} value={level.rank}>
+                        {level.name}
+                      </option>
+                    ))}
                 </select>
               </div>
 

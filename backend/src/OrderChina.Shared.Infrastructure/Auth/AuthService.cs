@@ -186,6 +186,8 @@ public class AuthService : IAuthService
             PhoneNumber = request.PhoneNumber,
             FullName = request.FullName,
             UserType = UserType.Customer,
+            // Rank 1 = "Đồng" (bậc Ưu đãi khách thấp nhất) — xem OrderChina.Shared.Domain.Fees.UserLevel.
+            Tier = 1,
             CreatedAtUtc = DateTime.UtcNow
         };
 

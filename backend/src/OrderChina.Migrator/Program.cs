@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OrderChina.Shared.Domain.Auth;
+using OrderChina.Shared.Domain.Fees;
 using OrderChina.Shared.Domain.Identity;
 using OrderChina.Shared.Domain.Shipping;
 using OrderChina.Shared.Domain.Warehouses;
@@ -72,6 +73,8 @@ static async Task SeedAsync(IServiceProvider services, AppDbContext dbContext)
         FullName = "Super Admin",
         UserType = UserType.Staff,
         Role = Role.Admin,
+        // Rank 1 = "Đồng" (bậc Ưu đãi khách thấp nhất) — mặc định chung cho mọi tài khoản mới.
+        Tier = 1,
         CreatedAtUtc = DateTime.UtcNow,
         EmailConfirmed = true
     };
@@ -114,6 +117,18 @@ static async Task SeedMasterDataAsync(AppDbContext dbContext)
         await dbContext.SaveChangesAsync();
         Console.WriteLine("Đã seed danh sách Phương thức vận chuyển.");
     }
+
+    if (!await dbContext.UserLevels.AnyAsync())
+    {
+        dbContext.UserLevels.AddRange(
+            new UserLevel { Id = Guid.NewGuid(), Name = "Đồng", Rank = 1, IsActive = true },
+            new UserLevel { Id = Guid.NewGuid(), Name = "Bạc", Rank = 2, IsActive = true },
+            new UserLevel { Id = Guid.NewGuid(), Name = "Vàng", Rank = 3, IsActive = true },
+            new UserLevel { Id = Guid.NewGuid(), Name = "Kim Cương", Rank = 4, IsActive = true },
+            new UserLevel { Id = Guid.NewGuid(), Name = "Tinh Anh", Rank = 5, IsActive = true });
+        await dbContext.SaveChangesAsync();
+        Console.WriteLine("Đã seed danh sách Cấp độ ưu đãi khách hàng.");
+    }
 }
 
 static async Task SeedStaffAsync(IServiceProvider services)
@@ -147,6 +162,7 @@ static async Task SeedStaffAsync(IServiceProvider services)
             FullName = fullName,
             UserType = UserType.Staff,
             Role = role,
+            Tier = 1,
             CreatedAtUtc = DateTime.UtcNow,
             EmailConfirmed = true
         };

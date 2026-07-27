@@ -6,7 +6,8 @@
   "exports": {
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",
-    "./assets/*": "./src/assets/*"
+    "./assets/*": "./src/assets/*",
+    "./utils/*": "./src/utils/*.ts"
   },
   "peerDependencies": {
     "next": "*",

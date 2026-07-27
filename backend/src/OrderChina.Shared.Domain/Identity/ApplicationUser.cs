@@ -45,6 +45,9 @@ public class ApplicationUser : IdentityUser<Guid>
 
     public decimal? CustomVolumeFeePerCbm { get; set; }
 
+    /// <summary>Phần trăm cọc tối thiểu riêng cho khách này — ưu tiên hơn UserLevel.MinDepositPercent theo Tier nếu &gt; 0.</summary>
+    public decimal? CustomMinDepositPercent { get; set; }
+
     /// <summary>
     /// Nhân viên kinh doanh/đặt hàng phụ trách — lưu thô Guid (Id của 1 ApplicationUser có UserType=Staff),
     /// không khai báo navigation/FK constraint để tránh phức tạp hoá model Identity tự-tham-chiếu.

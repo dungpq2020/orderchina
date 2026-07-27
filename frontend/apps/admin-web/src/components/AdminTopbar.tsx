@@ -1,12 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 interface AdminTopbarProps {
   title: string;
+  adminApiBaseUrl: string;
+  accessToken: string;
   onOpenMobileMenu: () => void;
-  onLogout: () => void;
 }
 
-export default function AdminTopbar({ title, onOpenMobileMenu, onLogout }: AdminTopbarProps) {
+export default function AdminTopbar({ title, adminApiBaseUrl, accessToken, onOpenMobileMenu }: AdminTopbarProps) {
+  const [purchaseExchangeRate, setPurchaseExchangeRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`${adminApiBaseUrl}/system-config`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((config: { purchaseExchangeRate: number } | null) => {
+        if (config) setPurchaseExchangeRate(config.purchaseExchangeRate);
+      })
+      .catch(() => {});
+  }, [adminApiBaseUrl, accessToken]);
+
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3">
       <div className="flex items-center gap-3">
@@ -22,12 +36,14 @@ export default function AdminTopbar({ title, onOpenMobileMenu, onLogout }: Admin
         <h1 className="text-sm font-semibold text-zinc-900">{title}</h1>
       </div>
 
-      <button
-        onClick={onLogout}
-        className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
-      >
-        Đăng xuất
-      </button>
+      {purchaseExchangeRate !== null && (
+        <p className="text-sm text-zinc-700">
+          Tỉ giá:{" "}
+          <span className="font-semibold text-orange-600">
+            1¥ = {purchaseExchangeRate.toLocaleString("vi-VN")} VNĐ
+          </span>
+        </p>
+      )}
     </header>
   );
 }

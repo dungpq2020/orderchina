@@ -399,6 +399,400 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.ToTable("user_group_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("OrderChina.Shared.Domain.Fees.BankAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountHolderName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("account_holder_name");
+
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("account_number");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("bank_name");
+
+                    b.Property<string>("Branch")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("branch");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("QrCodeUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("qr_code_url");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_bank_accounts");
+
+                    b.ToTable("bank_accounts", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Fees.FeeBuyPro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("Percent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("percent");
+
+                    b.Property<decimal>("PriceFrom")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price_from");
+
+                    b.Property<decimal>("PriceTo")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price_to");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_fee_buy_pros");
+
+                    b.ToTable("fee_buy_pros", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Fees.FeeCheckProduct", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price");
+
+                    b.Property<int>("PriceTier")
+                        .HasColumnType("integer")
+                        .HasColumnName("price_tier");
+
+                    b.Property<int>("QuantityFrom")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity_from");
+
+                    b.Property<int>("QuantityTo")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity_to");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_fee_check_products");
+
+                    b.ToTable("fee_check_products", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Fees.FeeWeight", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid>("FromWarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_warehouse_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int>("OrderType")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_type");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price");
+
+                    b.Property<Guid>("ShippingMethodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shipping_method_id");
+
+                    b.Property<Guid>("ToWarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_warehouse_id");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<decimal>("WeightFrom")
+                        .HasColumnType("numeric")
+                        .HasColumnName("weight_from");
+
+                    b.Property<decimal>("WeightTo")
+                        .HasColumnType("numeric")
+                        .HasColumnName("weight_to");
+
+                    b.HasKey("Id")
+                        .HasName("pk_fee_weights");
+
+                    b.ToTable("fee_weights", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Fees.SystemConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<int>("CartAutoDeleteDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("cart_auto_delete_days");
+
+                    b.Property<string>("ChromeToolUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("chrome_tool_url");
+
+                    b.Property<decimal>("ConsignmentExchangeRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("consignment_exchange_rate");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<int>("MaxLinksPerOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_links_per_order");
+
+                    b.Property<decimal>("MinPurchaseFee")
+                        .HasColumnType("numeric")
+                        .HasColumnName("min_purchase_fee");
+
+                    b.Property<decimal>("PaymentExchangeRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("payment_exchange_rate");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone_number");
+
+                    b.Property<decimal>("PurchaseExchangeRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("purchase_exchange_rate");
+
+                    b.Property<decimal>("PurchaseInsurancePercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("purchase_insurance_percent");
+
+                    b.Property<decimal>("PurchasingStaffCommissionPurchasePercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("purchasing_staff_commission_purchase_percent");
+
+                    b.Property<decimal>("SalesCommissionConsignmentPercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("sales_commission_consignment_percent");
+
+                    b.Property<decimal>("SalesCommissionPaymentPercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("sales_commission_payment_percent");
+
+                    b.Property<decimal>("SalesCommissionPurchasePercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("sales_commission_purchase_percent");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<string>("WebsiteName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("website_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_system_configs");
+
+                    b.ToTable("system_configs", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Fees.UserLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal>("MinDepositPercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("min_deposit_percent");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("PurchaseFeeDiscountPercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("purchase_fee_discount_percent");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("rank");
+
+                    b.Property<decimal>("ShippingFeeDiscountPercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("shipping_fee_discount_percent");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_levels");
+
+                    b.HasIndex("Rank")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_levels_rank");
+
+                    b.ToTable("user_levels", (string)null);
+                });
+
             modelBuilder.Entity("OrderChina.Shared.Domain.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -435,6 +829,10 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.Property<decimal?>("CustomExchangeRate")
                         .HasColumnType("numeric")
                         .HasColumnName("custom_exchange_rate");
+
+                    b.Property<decimal?>("CustomMinDepositPercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("custom_min_deposit_percent");
 
                     b.Property<decimal?>("CustomPurchaseFeePercent")
                         .HasColumnType("numeric")
@@ -567,6 +965,266 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("OrderChina.Shared.Domain.Orders.MainOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ArrivedChinaWarehouseAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("arrived_china_warehouse_at_utc");
+
+                    b.Property<DateTime?>("ArrivedVietnamWarehouseAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("arrived_vietnam_warehouse_at_utc");
+
+                    b.Property<DateTime?>("AwaitingDepositAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("awaiting_deposit_at_utc");
+
+                    b.Property<DateTime?>("AwaitingShopShipmentAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("awaiting_shop_shipment_at_utc");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at_utc");
+
+                    b.Property<decimal>("CheckProductFeeAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("check_product_fee_amount");
+
+                    b.Property<Guid?>("ChinaWarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("china_warehouse_id");
+
+                    b.Property<DateTime?>("ComplaintAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("complaint_at_utc");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at_utc");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<int>("CreationType")
+                        .HasColumnType("integer")
+                        .HasColumnName("creation_type");
+
+                    b.Property<decimal>("DepositAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("deposit_amount");
+
+                    b.Property<DateTime?>("DepositedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deposited_at_utc");
+
+                    b.Property<decimal>("ExchangeRateApplied")
+                        .HasColumnType("numeric")
+                        .HasColumnName("exchange_rate_applied");
+
+                    b.Property<DateTime?>("InTransitToVietnamAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("in_transit_to_vietnam_at_utc");
+
+                    b.Property<decimal>("InsuranceFeeAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("insurance_fee_amount");
+
+                    b.Property<decimal>("MinDepositPercentApplied")
+                        .HasColumnType("numeric")
+                        .HasColumnName("min_deposit_percent_applied");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("order_code");
+
+                    b.Property<long>("OrderNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("order_number");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("OrderNumber"));
+
+                    b.Property<Guid?>("OrderStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_staff_id");
+
+                    b.Property<int>("OrderType")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_type");
+
+                    b.Property<DateTime?>("PaidAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at_utc");
+
+                    b.Property<decimal>("ProductAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("product_amount");
+
+                    b.Property<decimal>("PurchaseFeeAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("purchase_fee_amount");
+
+                    b.Property<decimal>("PurchaseFeePercentApplied")
+                        .HasColumnType("numeric")
+                        .HasColumnName("purchase_fee_percent_applied");
+
+                    b.Property<DateTime?>("PurchasedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purchased_at_utc");
+
+                    b.Property<bool>("RequestCheckProduct")
+                        .HasColumnType("boolean")
+                        .HasColumnName("request_check_product");
+
+                    b.Property<bool>("RequestHomeDelivery")
+                        .HasColumnType("boolean")
+                        .HasColumnName("request_home_delivery");
+
+                    b.Property<bool>("RequestInsurance")
+                        .HasColumnType("boolean")
+                        .HasColumnName("request_insurance");
+
+                    b.Property<bool>("RequestPackaging")
+                        .HasColumnType("boolean")
+                        .HasColumnName("request_packaging");
+
+                    b.Property<Guid?>("SalesStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sales_staff_id");
+
+                    b.Property<decimal>("ShippingFeeCn")
+                        .HasColumnType("numeric")
+                        .HasColumnName("shipping_fee_cn");
+
+                    b.Property<decimal>("ShippingFeeVn")
+                        .HasColumnType("numeric")
+                        .HasColumnName("shipping_fee_vn");
+
+                    b.Property<Guid?>("ShippingMethodId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shipping_method_id");
+
+                    b.Property<DateTime?>("ShopShippedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("shop_shipped_at_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_amount");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid?>("VietnamWarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vietnam_warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_main_orders");
+
+                    b.HasIndex("OrderCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_main_orders_order_code");
+
+                    b.HasIndex("OrderNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_main_orders_order_number");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_main_orders_user_id");
+
+                    b.ToTable("main_orders", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Orders.MainOrderProduct", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Attributes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("attributes");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("image_url");
+
+                    b.Property<Guid>("MainOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("main_order_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("ProductLink")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("product_link");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("product_name");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("UnitPriceCny")
+                        .HasColumnType("numeric")
+                        .HasColumnName("unit_price_cny");
+
+                    b.HasKey("Id")
+                        .HasName("pk_main_order_products");
+
+                    b.HasIndex("MainOrderId")
+                        .HasDatabaseName("ix_main_order_products_main_order_id");
+
+                    b.ToTable("main_order_products", (string)null);
+                });
+
             modelBuilder.Entity("OrderChina.Shared.Domain.Shipping.ShippingMethod", b =>
                 {
                     b.Property<Guid>("Id")
@@ -574,9 +1232,21 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -584,10 +1254,184 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("name");
 
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
                     b.HasKey("Id")
                         .HasName("pk_shipping_methods");
 
                     b.ToTable("shipping_methods", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Wallets.WalletRecharge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at_utc");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<Guid?>("BankAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bank_account_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_wallet_recharges");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_wallet_recharges_user_id");
+
+                    b.ToTable("wallet_recharges", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Wallets.WalletTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("numeric")
+                        .HasColumnName("balance_after");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reference_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_wallet_transactions");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_wallet_transactions_user_id");
+
+                    b.ToTable("wallet_transactions", (string)null);
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Wallets.WalletWithdrawal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at_utc");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<string>("BankAccountHolderName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("bank_account_holder_name");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("bank_account_number");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("bank_name");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_wallet_withdrawals");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_wallet_withdrawals_user_id");
+
+                    b.ToTable("wallet_withdrawals", (string)null);
                 });
 
             modelBuilder.Entity("OrderChina.Shared.Domain.Warehouses.Warehouse", b =>
@@ -597,9 +1441,26 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -610,6 +1471,14 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("integer")
                         .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_warehouses");
@@ -710,6 +1579,16 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.Navigation("UserGroup");
                 });
 
+            modelBuilder.Entity("OrderChina.Shared.Domain.Orders.MainOrderProduct", b =>
+                {
+                    b.HasOne("OrderChina.Shared.Domain.Orders.MainOrder", null)
+                        .WithMany("Products")
+                        .HasForeignKey("MainOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_main_order_products_main_orders_main_order_id");
+                });
+
             modelBuilder.Entity("OrderChina.Shared.Domain.Auth.Permission", b =>
                 {
                     b.Navigation("UserGroupPermissions");
@@ -725,6 +1604,11 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.Navigation("Memberships");
 
                     b.Navigation("UserGroupPermissions");
+                });
+
+            modelBuilder.Entity("OrderChina.Shared.Domain.Orders.MainOrder", b =>
+                {
+                    b.Navigation("Products");
                 });
 #pragma warning restore 612, 618
         }

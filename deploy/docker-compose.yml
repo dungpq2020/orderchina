@@ -51,6 +51,9 @@ services:
       ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-orderchina};Username=${POSTGRES_USER:-orderchina};Password=${POSTGRES_PASSWORD}"
       Jwt__Issuer: ${JWT_ISSUER:-orderchina-ng}
       Jwt__RsaPrivateKeyBase64: ${JWT_RSA_PRIVATE_KEY_BASE64}
+    volumes:
+      # Ảnh sản phẩm upload qua /uploads/products — mount volume riêng để không mất khi rebuild/recreate container.
+      - admin-api-uploads:/app/wwwroot/uploads
     networks: [backend-net]
 
   customer-api:
@@ -120,3 +123,4 @@ volumes:
   pgdata: {}
   certbot-webroot: {}
   letsencrypt: {}
+  admin-api-uploads: {}

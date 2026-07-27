@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
 import EditCustomerModal from "./EditCustomerModal";
+import RechargeWalletModal from "./RechargeWalletModal";
+import WithdrawWalletModal from "./WithdrawWalletModal";
+import { formatDateTime } from "@orderchina/ui/utils/formatDateTime";
 
 interface CustomerListPageProps {
   adminApiBaseUrl: string;
@@ -78,6 +82,7 @@ export interface CustomerListItem {
   customPurchaseFeePercent: number | null;
   customWeightFeePerKg: number | null;
   customVolumeFeePerCbm: number | null;
+  customMinDepositPercent: number | null;
   salesStaffId: string | null;
   salesStaffName: string | null;
   orderStaffId: string | null;
@@ -108,7 +113,10 @@ const PAGE_SIZE = 20;
 
 export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: CustomerListPageProps) {
   const [editing, setEditing] = useState<CustomerListItem | null>(null);
+  const [recharging, setRecharging] = useState<CustomerListItem | null>(null);
+  const [withdrawing, setWithdrawing] = useState<CustomerListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [levelNameByRank, setLevelNameByRank] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (!toast) return;
@@ -137,6 +145,20 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
     fetchPage: fetchCustomers,
   });
 
+  useEffect(() => {
+    if (state.status !== "ready") return;
+
+    fetch(`${adminApiBaseUrl}/user-level/list`, {
+      headers: { Authorization: `Bearer ${state.accessToken}` },
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((levels: { rank: number; name: string }[]) => {
+        setLevelNameByRank(Object.fromEntries(levels.map((l) => [l.rank, l.name])));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminApiBaseUrl, state.status === "ready" ? state.accessToken : null]);
+
   function handleCustomerSaved(updated: Partial<CustomerListItem> & { id: string }) {
     setState((prev) => {
       if (prev.status !== "ready") return prev;
@@ -152,6 +174,36 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
     setToast("Cập nhật thành công");
   }
 
+  function handleWalletRecharged(customerId: string, newWalletBalance: number, status: number) {
+    setState((prev) => {
+      if (prev.status !== "ready") return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          items: prev.data.items.map((c) => (c.id === customerId ? { ...c, walletBalance: newWalletBalance } : c)),
+        },
+      };
+    });
+    setRecharging(null);
+    setToast(status === 2 ? "Nạp ví thành công" : "Đã tạo yêu cầu, chờ duyệt");
+  }
+
+  function handleWalletWithdrawn(customerId: string, newWalletBalance: number, status: number) {
+    setState((prev) => {
+      if (prev.status !== "ready") return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          items: prev.data.items.map((c) => (c.id === customerId ? { ...c, walletBalance: newWalletBalance } : c)),
+        },
+      };
+    });
+    setWithdrawing(null);
+    setToast(status === 2 ? "Rút ví thành công" : "Đã tạo yêu cầu, chờ duyệt");
+  }
+
   if (state.status === "loading" || state.status === "unauthenticated") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
@@ -162,7 +214,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
   if (state.status === "error") {
     return (
-      <AdminLayout title="Danh sách khách hàng" onLogout={logout}>
+      <AdminLayout title="Danh sách khách hàng" adminApiBaseUrl={adminApiBaseUrl} accessToken="" onLogout={logout}>
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{state.message}</p>
       </AdminLayout>
     );
@@ -172,7 +224,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
 
   return (
-    <AdminLayout title="Danh sách khách hàng" onLogout={logout}>
+    <AdminLayout title="Danh sách khách hàng" adminApiBaseUrl={adminApiBaseUrl} accessToken={accessToken} onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách khách hàng ({data.totalCount})
       </h1>
@@ -209,7 +261,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
                     <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass(c.status)}`} />
                     <span className={`font-medium ${statusTextClass(c.status)}`}>{statusLabel(c.status)}</span>
                     <span className="text-zinc-300">·</span>
-                    <span className="font-medium text-orange-500">VIP {c.tier}</span>
+                    <span className="font-medium text-orange-500">{levelNameByRank[c.tier] ?? "Chưa xếp hạng"}</span>
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-amber-600">
                     <CoinIcon className="h-3.5 w-3.5 text-amber-500" />
@@ -240,13 +292,13 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
                   <div className="mt-1.5">PPVC: {c.shippingMethodName ?? "—"}</div>
                 </td>
                 <td className="px-4 py-3 text-xs text-zinc-500">
-                  <div>{new Date(c.createdAtUtc).toLocaleString()}</div>
+                  <div>{formatDateTime(c.createdAtUtc)}</div>
                   <div className="mt-1 text-zinc-400">{c.createdByUsername ?? c.username}</div>
                 </td>
                 <td className="px-4 py-3 text-xs text-zinc-500">
                   {c.updatedAtUtc ? (
                     <>
-                      <div>{new Date(c.updatedAtUtc).toLocaleString()}</div>
+                      <div>{formatDateTime(c.updatedAtUtc)}</div>
                       <div className="mt-1 text-zinc-400">{c.updatedByUsername ?? "—"}</div>
                     </>
                   ) : (
@@ -254,12 +306,32 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <button
-                    onClick={() => setEditing(c)}
-                    className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-200"
-                  >
-                    Cập nhật
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => setEditing(c)}
+                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-200"
+                    >
+                      Cập nhật
+                    </button>
+                    <button
+                      onClick={() => setRecharging(c)}
+                      className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-50"
+                    >
+                      Nạp ví
+                    </button>
+                    <button
+                      onClick={() => setWithdrawing(c)}
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:border-red-300 hover:bg-red-50"
+                    >
+                      Rút ví
+                    </button>
+                    <Link
+                      href={`/wallettransactions?userId=${c.id}`}
+                      className="rounded-lg border border-blue-200 px-3 py-1.5 text-center text-xs font-medium text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
+                    >
+                      Lịch sử giao dịch
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -298,6 +370,30 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
           accessToken={accessToken}
           onClose={() => setEditing(null)}
           onSaved={handleCustomerSaved}
+        />
+      )}
+
+      {recharging && (
+        <RechargeWalletModal
+          customerId={recharging.id}
+          customerUsername={recharging.username}
+          currentWalletBalance={recharging.walletBalance}
+          adminApiBaseUrl={adminApiBaseUrl}
+          accessToken={accessToken}
+          onClose={() => setRecharging(null)}
+          onSaved={handleWalletRecharged}
+        />
+      )}
+
+      {withdrawing && (
+        <WithdrawWalletModal
+          customerId={withdrawing.id}
+          customerUsername={withdrawing.username}
+          currentWalletBalance={withdrawing.walletBalance}
+          adminApiBaseUrl={adminApiBaseUrl}
+          accessToken={accessToken}
+          onClose={() => setWithdrawing(null)}
+          onSaved={handleWalletWithdrawn}
         />
       )}
 

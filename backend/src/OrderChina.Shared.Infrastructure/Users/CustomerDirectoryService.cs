@@ -154,6 +154,7 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         user.CustomPurchaseFeePercent = request.CustomPurchaseFeePercent;
         user.CustomWeightFeePerKg = request.CustomWeightFeePerKg;
         user.CustomVolumeFeePerCbm = request.CustomVolumeFeePerCbm;
+        user.CustomMinDepositPercent = request.CustomMinDepositPercent;
         user.SalesStaffId = request.SalesStaffId;
         user.OrderStaffId = request.OrderStaffId;
         user.ChinaWarehouseId = request.ChinaWarehouseId;
@@ -216,6 +217,29 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         return new WalletAdjustResult(true, null, user.WalletBalance);
     }
 
+    public async Task<IReadOnlyList<CustomerSearchItem>> SearchCustomersAsync(string query, CancellationToken cancellationToken = default)
+    {
+        query = query.Trim();
+        if (query.Length == 0)
+        {
+            return Array.Empty<CustomerSearchItem>();
+        }
+
+        var pattern = $"%{query}%";
+
+        var users = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.UserType == UserType.Customer
+                && (EF.Functions.ILike(u.UserName!, pattern) || EF.Functions.ILike(u.FullName, pattern)))
+            .OrderBy(u => u.UserName)
+            .Take(20)
+            .ToListAsync(cancellationToken);
+
+        return users
+            .Select(u => new CustomerSearchItem(u.Id, u.UserName!, u.FullName, u.WalletBalance, u.ChinaWarehouseId, u.VietnamWarehouseId, u.ShippingMethodId))
+            .ToList();
+    }
+
     private Task<bool> IsValidStaffAsync(Guid staffId, CancellationToken cancellationToken)
     {
         return _dbContext.Users.AnyAsync(u => u.Id == staffId && u.UserType == UserType.Staff, cancellationToken);
@@ -263,6 +287,7 @@ public class CustomerDirectoryService : ICustomerDirectoryService
             user.CustomPurchaseFeePercent,
             user.CustomWeightFeePerKg,
             user.CustomVolumeFeePerCbm,
+            user.CustomMinDepositPercent,
             user.SalesStaffId,
             salesStaffName,
             user.OrderStaffId,
@@ -299,6 +324,7 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         user.CustomPurchaseFeePercent,
         user.CustomWeightFeePerKg,
         user.CustomVolumeFeePerCbm,
+        user.CustomMinDepositPercent,
         user.SalesStaffId,
         user.SalesStaffId is { } salesId ? staffNames.GetValueOrDefault(salesId) : null,
         user.OrderStaffId,

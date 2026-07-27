@@ -9,4 +9,6 @@ public interface ICustomerDirectoryService
     Task<UpdateCustomerResult> UpdateCustomerAsync(Guid id, UpdateCustomerRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
 
     Task<WalletAdjustResult> AdjustWalletAsync(Guid id, WalletAdjustRequest request, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<CustomerSearchItem>> SearchCustomersAsync(string query, CancellationToken cancellationToken = default);
 }
