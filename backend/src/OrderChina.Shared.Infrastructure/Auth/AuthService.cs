@@ -100,6 +100,29 @@ public class AuthService : IAuthService
 
         if (existingToken.RevokedAtUtc is not null)
         {
+            // Nhiều tab cùng mở 1 trình duyệt share chung cookie refresh token — khi 2 tab cùng gọi
+            // /auth/refresh gần như đồng thời (vd bật lại tab nền), request tới sau có thể vẫn cầm
+            // token VỪA bị tab kia rotate. Đây là race lành tính, không phải bị đánh cắp: chỉ token
+            // bị rotate (không phải logout/đổi mật khẩu/reuse trước đó) VÀ còn trong khoảng ân hạn
+            // ngắn mới được coi là race — rotate tiếp từ token thay thế để trả về phiên hợp lệ,
+            // thay vì thu hồi hết khiến người dùng bị đăng xuất oan khi chuyển qua lại giữa các tab.
+            var withinGraceWindow = existingToken.ReasonRevoked == "rotated"
+                && existingToken.ReplacedByTokenHash is not null
+                && DateTime.UtcNow - existingToken.RevokedAtUtc.Value < TimeSpan.FromSeconds(15);
+
+            if (withinGraceWindow)
+            {
+                var replacement = await _dbContext.RefreshTokens
+                    .Include(t => t.User)
+                    .FirstOrDefaultAsync(t => t.TokenHash == existingToken.ReplacedByTokenHash && t.Audience == audience, cancellationToken);
+
+                if (replacement is { RevokedAtUtc: null } && replacement.ExpiresAtUtc > DateTime.UtcNow)
+                {
+                    var reissuedTokens = await IssueTokensAsync(replacement.User, audience, request.IpAddress, cancellationToken, replacement);
+                    return new AuthResult(true, reissuedTokens, null);
+                }
+            }
+
             // Token đã bị revoke/dùng rồi mà vẫn được gửi lên lần nữa → dấu hiệu bị đánh cắp.
             await RevokeAllSessionsAsync(existingToken.UserId, "reuse_detected", cancellationToken);
             return new AuthResult(false, null, "Refresh token không hợp lệ. Toàn bộ phiên đăng nhập đã bị thu hồi vì lý do bảo mật.");
