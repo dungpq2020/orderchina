@@ -293,8 +293,7 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
                     <div className="space-y-1">
                       <div>Tỷ giá: {formatMoney(o.exchangeRateApplied)} đ</div>
                       <div>Tiền hàng (¥): {o.productAmountCny.toLocaleString("vi-VN")} ¥</div>
-                      <div>Tổng tiền: {formatMoney(o.totalAmount)} đ</div>
-                      <div className="font-semibold text-green-600">Tiền cần cọc: {formatMoney(o.depositAmount)} đ</div>
+                      <div className="font-semibold text-green-600">Tổng tiền: {formatMoney(o.totalAmount)} đ</div>
                       <div className="font-semibold text-blue-600">Đã trả: {formatMoney(o.amountPaid)} đ</div>
                       <div className="font-semibold text-red-600">Còn lại: {formatMoney(o.remainingAmount)} đ</div>
                     </div>

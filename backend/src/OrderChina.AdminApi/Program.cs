@@ -32,9 +32,9 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddHealthChecks();
 
 // CORS chỉ bật ở Development để 2 frontend chạy "npm run dev" (port riêng, khác origin) gọi được
-// kèm cookie. Cho phép cả customer-web (3000, nơi đặt trang login dùng chung /authen/login — form
-// thử gọi CustomerApi rồi mới thử AdminApi) lẫn admin-web (3001). Production không cần vì Nginx
-// đưa cả 2 về chung 1 origin (xem orderchina.conf).
+// kèm cookie. Cho phép cả customer-web (3000, nơi đặt trang login dùng chung /login — form thử gọi
+// CustomerApi rồi mới thử AdminApi) lẫn admin-web (3001). Production không cần vì Nginx đưa cả 2 về
+// chung 1 origin (xem orderchina.conf).
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>
