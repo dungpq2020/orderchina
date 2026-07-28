@@ -222,7 +222,7 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
 
   return (
     <CustomerLayout
-      title="Đơn hàng"
+      title="Đơn hàng mua hộ"
       fullName={me.fullName}
       username={me.username}
       walletBalance={me.walletBalance}

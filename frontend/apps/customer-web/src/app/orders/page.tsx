@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import OrdersPage from "@/components/OrdersPage";
 
 export const metadata: Metadata = {
-  title: "Đơn hàng",
+  title: "Đơn hàng mua hộ",
 };
 
 export default function OrdersRoute() {

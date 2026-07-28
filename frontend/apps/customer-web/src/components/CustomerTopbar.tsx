@@ -27,7 +27,7 @@ export default function CustomerTopbar({
   onComingSoon,
   onLogout,
 }: CustomerTopbarProps) {
-  const displayName = fullName ?? username;
+  const displayName = username;
 
   return (
     <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white">
@@ -35,9 +35,6 @@ export default function CustomerTopbar({
         {hotline && <span>Hotline: {hotline}</span>}
         <span>Tỷ giá: {formatMoney(exchangeRate)} đ / ¥</span>
         <span>Số dư: {formatMoney(walletBalance)} đ</span>
-        <button onClick={() => onComingSoon("Thông báo")} className="hover:underline">
-          🔔
-        </button>
         <div className="group relative">
           <button className="flex items-center gap-1.5 hover:underline">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold">

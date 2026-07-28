@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import logo from "@orderchina/ui/assets/logo.png";
+import logoMark from "@orderchina/ui/assets/logo-mark.png";
 
 export interface SidebarItem {
   label: string;
   href?: string;
-  /** Màu nền + chữ cho icon (Tailwind) — dùng cho cả lưới ở Trang chủ lẫn icon ở sidebar lúc không active. */
+  /** Màu nền cho badge tròn phía sau icon (Tailwind) — icon giờ đã tự có màu riêng nên chỉ cần nền trung tính. */
   color: string;
   icon: React.ReactNode;
 }
@@ -16,122 +16,139 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   {
     label: "Trang chủ",
     href: "/dashboard",
-    color: "bg-blue-100 text-blue-700",
+    color: "bg-zinc-100",
     icon: (
-      <path
-        d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-9.5z"
-        strokeWidth={1.5}
-        stroke="currentColor"
-        fill="none"
-        strokeLinejoin="round"
-      />
+      <>
+        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-9.5z" fill="#BFDBFE" />
+        <path d="M2 11 12 3l10 8" fill="none" stroke="#2563EB" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="9.5" y="14.5" width="5" height="6" fill="#2563EB" />
+      </>
     ),
   },
   {
     label: "Giỏ hàng",
-    color: "bg-rose-100 text-rose-700",
+    color: "bg-zinc-100",
     icon: (
       <>
+        <path d="M7 6.5 8.2 15h9.6l1.7-6.5H7z" fill="#FDA4AF" />
         <path
           d="M4 6h2l1.6 9.6a2 2 0 0 0 2 1.7h6.8a2 2 0 0 0 2-1.6L20 9H7"
-          strokeWidth={1.5}
-          stroke="currentColor"
           fill="none"
+          stroke="#E11D48"
+          strokeWidth={1.6}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle cx="10" cy="20" r="1.4" fill="currentColor" />
-        <circle cx="17" cy="20" r="1.4" fill="currentColor" />
+        <circle cx="10" cy="20" r="1.4" fill="#9F1239" />
+        <circle cx="17" cy="20" r="1.4" fill="#9F1239" />
       </>
     ),
   },
   {
-    label: "Tạo đơn order",
-    color: "bg-lime-100 text-lime-700",
-    icon: <path d="M4 4h9l3 3v13H4V4z" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />,
+    label: "Tạo đơn thủ công",
+    color: "bg-zinc-100",
+    icon: (
+      <>
+        <path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#D9F99D" />
+        <path d="M14 3v4h4" fill="none" stroke="#4D7C0F" strokeWidth={1.4} strokeLinejoin="round" />
+        <circle cx="17" cy="17.5" r="4.2" fill="#65A30D" />
+        <path d="M17 15.6v3.8M15.1 17.5h3.8" stroke="white" strokeWidth={1.4} strokeLinecap="round" />
+      </>
+    ),
   },
   {
     label: "Tạo đơn ký gửi",
-    color: "bg-sky-100 text-sky-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <path d="M4 7l8-4 8 4-8 4-8-4z" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
-        <path d="M4 7v10l8 4 8-4V7" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
+        <path d="M4 7l8-4 8 4-8 4-8-4z" fill="#BAE6FD" />
+        <path d="M4 7v10l8 4 8-4V7" fill="none" stroke="#0284C7" strokeWidth={1.5} strokeLinejoin="round" />
+        <path d="M4 7l8 4 8-4" fill="none" stroke="#0284C7" strokeWidth={1.5} strokeLinejoin="round" />
+        <path d="M12 11v10" stroke="#0284C7" strokeWidth={1.2} />
       </>
     ),
   },
   {
-    label: "Đơn hàng",
+    label: "Đơn hàng mua hộ",
     href: "/orders",
-    color: "bg-teal-100 text-teal-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <rect x="4" y="4" width="16" height="16" rx="2" strokeWidth={1.5} stroke="currentColor" fill="none" />
-        <path d="M8 9h8M8 13h8M8 17h5" strokeWidth={1.5} stroke="currentColor" strokeLinecap="round" />
+        <path d="M4 8l8-4 8 4-8 4-8-4z" fill="#FDBA74" />
+        <path d="M4 8v9l8 4 8-4V8" fill="#F97316" />
+        <path d="M4 8l8 4 8-4" fill="none" stroke="#C2410C" strokeWidth={1.2} strokeLinejoin="round" />
+        <path d="M12 12v9" stroke="#C2410C" strokeWidth={1.2} />
       </>
     ),
   },
   {
     label: "Kiện hàng",
-    color: "bg-amber-100 text-amber-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <path d="M3 8l9-5 9 5-9 5-9-5z" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
-        <path d="M3 8v8l9 5 9-5V8" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
-        <path d="M12 13v8" strokeWidth={1.5} stroke="currentColor" />
+        <rect x="3.5" y="10.5" width="7.5" height="7.5" rx="0.6" fill="#FDE68A" stroke="#B45309" strokeWidth={1.1} />
+        <rect x="12.5" y="7" width="8" height="8" rx="0.6" fill="#FCD34D" stroke="#B45309" strokeWidth={1.1} />
+        <path d="M12.5 11h8M16.5 7v8" stroke="#B45309" strokeWidth={0.9} />
+        <path d="M3.5 14.2h7.5M7.2 10.5v7.5" stroke="#B45309" strokeWidth={0.9} />
       </>
     ),
   },
   {
     label: "Giao hàng",
-    color: "bg-emerald-100 text-emerald-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <rect x="3" y="9" width="11" height="8" rx="1" strokeWidth={1.5} stroke="currentColor" fill="none" />
-        <path d="M14 12h4l3 3v2h-7v-5z" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
-        <circle cx="7.5" cy="19" r="1.4" fill="currentColor" />
-        <circle cx="17" cy="19" r="1.4" fill="currentColor" />
+        <rect x="3" y="9" width="11" height="8" rx="1" fill="#6EE7B7" />
+        <path d="M14 12h4l3 3v2h-7v-5z" fill="#A7F3D0" stroke="#047857" strokeWidth={1.3} strokeLinejoin="round" />
+        <rect x="3" y="9" width="11" height="8" rx="1" fill="none" stroke="#047857" strokeWidth={1.3} />
+        <circle cx="7.5" cy="19" r="1.5" fill="#065F46" />
+        <circle cx="17" cy="19" r="1.5" fill="#065F46" />
       </>
     ),
   },
   {
     label: "Khiếu nại",
-    color: "bg-fuchsia-100 text-fuchsia-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <path d="M5 5h14v10H9l-4 4V5z" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
-        <path d="M12 8v4" strokeWidth={1.5} stroke="currentColor" strokeLinecap="round" />
-        <circle cx="12" cy="14.3" r="0.9" fill="currentColor" />
+        <path d="M5 5h14v10H9l-4 4V5z" fill="#F5D0FE" />
+        <path d="M5 5h14v10H9l-4 4V5z" fill="none" stroke="#A21CAF" strokeWidth={1.4} strokeLinejoin="round" />
+        <path d="M12 8v4" stroke="#A21CAF" strokeWidth={1.6} strokeLinecap="round" />
+        <circle cx="12" cy="14.3" r="1" fill="#A21CAF" />
       </>
     ),
   },
   {
     label: "Nhà cung cấp",
-    color: "bg-indigo-100 text-indigo-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <path d="M4 21V9l8-5 8 5v12" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinejoin="round" />
-        <path d="M9 21v-6h6v6" strokeWidth={1.5} stroke="currentColor" fill="none" />
+        <path d="M4 21V9l8-5 8 5v12H4z" fill="#C7D2FE" />
+        <path d="M4 21V9l8-5 8 5v12" fill="none" stroke="#4338CA" strokeWidth={1.4} strokeLinejoin="round" />
+        <rect x="9" y="15" width="6" height="6" fill="#4338CA" />
+        <rect x="7" y="10" width="2.5" height="2.5" fill="#4338CA" />
+        <rect x="14.5" y="10" width="2.5" height="2.5" fill="#4338CA" />
       </>
     ),
   },
   {
     label: "Tra cước",
-    color: "bg-cyan-100 text-cyan-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <circle cx="11" cy="11" r="6" strokeWidth={1.5} stroke="currentColor" fill="none" />
-        <path d="M20 20l-4.5-4.5" strokeWidth={1.5} stroke="currentColor" strokeLinecap="round" />
+        <circle cx="10.5" cy="10.5" r="6" fill="#A5F3FC" stroke="#0E7490" strokeWidth={1.4} />
+        <path d="M20 20l-4.8-4.8" stroke="#0E7490" strokeWidth={1.8} strokeLinecap="round" />
+        <path d="M10.5 8v5M8 10.5h5" stroke="#0E7490" strokeWidth={1.2} strokeLinecap="round" />
       </>
     ),
   },
   {
     label: "Tài khoản",
-    color: "bg-orange-100 text-orange-700",
+    color: "bg-zinc-100",
     icon: (
       <>
-        <circle cx="12" cy="8" r="3.2" strokeWidth={1.5} stroke="currentColor" fill="none" />
-        <path d="M5 20c1-4 4.5-6 7-6s6 2 7 6" strokeWidth={1.5} stroke="currentColor" fill="none" strokeLinecap="round" />
+        <circle cx="12" cy="8" r="3.4" fill="#FDBA74" stroke="#C2410C" strokeWidth={1.3} />
+        <path d="M5 20c1-4 4.5-6 7-6s6 2 7 6" fill="#FED7AA" stroke="#C2410C" strokeWidth={1.3} strokeLinecap="round" />
       </>
     ),
   },
@@ -148,7 +165,7 @@ export default function CustomerSidebar({ currentPath, mobileOpen, onCloseMobile
   const content = (
     <div className="flex h-full flex-col bg-white">
       <div className="flex items-center justify-center border-b border-zinc-200 px-4 py-4">
-        <Image src={logo} alt="Logo" priority className="h-8 w-auto" />
+        <Image src={logoMark} alt="Logo" priority className="h-10 w-10" />
       </div>
 
       <nav className="flex-1 overflow-y-auto">
