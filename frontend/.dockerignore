@@ -2,3 +2,4 @@
 **/.next
 **/.git
 **/npm-debug.log
+**/.env.local
