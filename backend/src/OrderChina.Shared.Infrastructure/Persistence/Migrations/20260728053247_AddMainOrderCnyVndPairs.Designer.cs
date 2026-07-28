@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderChina.Shared.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OrderChina.Shared.Infrastructure.Persistence;
 namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260728053247_AddMainOrderCnyVndPairs")]
+    partial class AddMainOrderCnyVndPairs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -980,10 +983,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("actual_purchase_amount_vnd");
 
-                    b.Property<decimal>("AmountPaid")
-                        .HasColumnType("numeric")
-                        .HasColumnName("amount_paid");
-
                     b.Property<DateTime?>("ArrivedChinaWarehouseAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("arrived_china_warehouse_at_utc");
@@ -1097,10 +1096,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("ProductAmount")
                         .HasColumnType("numeric")
                         .HasColumnName("product_amount");
-
-                    b.Property<decimal>("ProductAmountCny")
-                        .HasColumnType("numeric")
-                        .HasColumnName("product_amount_cny");
 
                     b.Property<decimal>("PurchaseFeeAmount")
                         .HasColumnType("numeric")

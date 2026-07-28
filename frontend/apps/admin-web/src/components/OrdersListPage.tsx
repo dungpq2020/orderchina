@@ -255,7 +255,11 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
               const badge = detectPlatformBadge(o.firstProductLink);
               return (
                 <tr key={o.id} className="border-b border-zinc-100 last:border-0 align-middle">
-                  <td className="px-4 py-3 text-center font-semibold text-blue-600">{o.orderCode}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-blue-600">
+                    <Link href={`/orderdetail?id=${o.id}`} className="hover:underline">
+                      {o.orderCode}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <div className="font-semibold text-red-600">{o.username}</div>
                     {o.vietnamWarehouseName && (
@@ -333,25 +337,31 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
                   </td>
                   <td className="px-4 py-3 text-center text-xs text-zinc-500">
                     <div className="space-y-1.5">
-                      {o.timeline.map((entry) => (
-                        <div key={entry.status}>
-                          <span
-                            className={`font-medium ${entry.status === o.status ? "text-orange-600" : "text-zinc-700"}`}
+                      {o.timeline.map((entry) => {
+                        const isActive = entry.status === o.status;
+                        return (
+                          <div
+                            key={entry.status}
+                            className={isActive ? "rounded-md bg-orange-100 px-2 py-1" : "px-2 py-1"}
                           >
-                            {STATUS_LABELS[entry.status] ?? entry.status}:
-                          </span>{" "}
-                          {formatDateTime(entry.atUtc)}
-                        </div>
-                      ))}
+                            <span className={`font-semibold ${isActive ? "text-orange-700" : "text-zinc-600"}`}>
+                              {STATUS_LABELS[entry.status] ?? entry.status}:
+                            </span>{" "}
+                            <span className={isActive ? "font-medium text-orange-700" : "text-zinc-500"}>
+                              {formatDateTime(entry.atUtc)}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setToast({ message: "Trang chi tiết đơn hàng đang được phát triển.", type: "success" })}
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-100"
+                    <Link
+                      href={`/orderdetail?id=${o.id}`}
+                      className="inline-block rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-100"
                     >
                       Chi tiết
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               );
