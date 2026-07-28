@@ -27,6 +27,8 @@ interface UnifiedLoginFormProps {
   adminApiBaseUrl: string;
   /** Trang danh sách khách hàng của admin-web — điều hướng sang đây khi đăng nhập tài khoản nhân viên thành công. */
   adminUserListUrl: string;
+  /** Trang dashboard của customer-web — điều hướng sang đây khi đăng nhập tài khoản khách hàng thành công. */
+  customerDashboardUrl: string;
 }
 
 interface LoginSuccess {
@@ -78,11 +80,16 @@ async function attemptLogin(
  * thử CustomerApi trước, nếu bị từ chối chung chung (không phải locked/2FA — tức tài khoản này
  * không thuộc Customer) mới thử tiếp AdminApi.
  *
- * Đăng nhập nhân viên thành công -> điều hướng sang trang danh sách khách hàng của admin-web
- * (trang đó tự refresh bằng cookie, không cần truyền access token qua URL). Khách hàng thì chưa có
- * dashboard thật nên vẫn hiển thị kết quả ngay tại đây.
+ * Đăng nhập thành công (cả nhân viên lẫn khách hàng) -> điều hướng full-page sang trang tương ứng
+ * (admin-web hoặc dashboard customer-web) — trang đó tự refresh bằng cookie, không cần truyền access
+ * token qua URL.
  */
-export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, adminUserListUrl }: UnifiedLoginFormProps) {
+export default function UnifiedLoginForm({
+  customerApiBaseUrl,
+  adminApiBaseUrl,
+  adminUserListUrl,
+  customerDashboardUrl,
+}: UnifiedLoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
@@ -125,6 +132,8 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
       if (customerResult.kind === "success") {
         persistRememberedLogin();
         setResult({ accountType: "customer", data: customerResult.data });
+        setRedirecting(true);
+        window.location.href = customerDashboardUrl;
         return;
       }
 
@@ -163,23 +172,7 @@ export default function UnifiedLoginForm({ customerApiBaseUrl, adminApiBaseUrl, 
     return (
       <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm">
         <p className="font-medium text-green-800">
-          Đăng nhập thành công — đang chuyển sang trang quản trị...
-        </p>
-      </div>
-    );
-  }
-
-  if (result) {
-    return (
-      <div className="w-full max-w-sm rounded-lg border border-green-200 bg-green-50 p-6 text-sm">
-        <p className="font-medium text-green-800">
-          Đăng nhập thành công ({result.accountType === "admin" ? "tài khoản nhân viên" : "tài khoản khách hàng"})
-        </p>
-        <p className="mt-2 break-all text-xs text-green-700">
-          Access token: {result.data.accessToken.slice(0, 40)}...
-        </p>
-        <p className="mt-1 text-xs text-green-700">
-          Hết hạn lúc: {new Date(result.data.expiresAtUtc).toLocaleString()}
+          Đăng nhập thành công — đang chuyển sang {result.accountType === "admin" ? "trang quản trị" : "trang chủ"}...
         </p>
       </div>
     );

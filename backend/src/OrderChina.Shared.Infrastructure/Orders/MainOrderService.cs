@@ -4,6 +4,7 @@ using OrderChina.Shared.Application.Orders.Dtos;
 using OrderChina.Shared.Domain.Fees;
 using OrderChina.Shared.Domain.Identity;
 using OrderChina.Shared.Domain.Orders;
+using OrderChina.Shared.Domain.Wallets;
 using OrderChina.Shared.Domain.Warehouses;
 using OrderChina.Shared.Infrastructure.Persistence;
 
@@ -159,12 +160,18 @@ public class MainOrderService : IMainOrderService
         return new CreateMainOrderResult(true, null, order.Id, order.OrderCode);
     }
 
-    public async Task<MainOrderListResult> GetListAsync(int page, int pageSize, CancellationToken cancellationToken = default)
+    public Task<MainOrderListResult> GetListAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
+        GetListInternalAsync(_dbContext.MainOrders.AsNoTracking(), page, pageSize, cancellationToken);
+
+    /// <summary>Trang "Đơn hàng" của customer-web — chỉ thấy đơn của chính mình, dùng lại đúng logic/hình dạng dữ liệu với danh sách admin.</summary>
+    public Task<MainOrderListResult> GetCustomerOrdersAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken = default) =>
+        GetListInternalAsync(_dbContext.MainOrders.AsNoTracking().Where(o => o.UserId == userId), page, pageSize, cancellationToken);
+
+    private async Task<MainOrderListResult> GetListInternalAsync(
+        IQueryable<MainOrder> query, int page, int pageSize, CancellationToken cancellationToken)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > 200 ? 20 : pageSize;
-
-        var query = _dbContext.MainOrders.AsNoTracking();
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -344,6 +351,103 @@ public class MainOrderService : IMainOrderService
         {
             entries.Add(new MainOrderTimelineEntry((int)status, at));
         }
+    }
+
+    /// <summary>
+    /// Khách tự đặt cọc — trừ thẳng WalletBalance (KHÔNG qua WalletWithdrawal, đây không phải yêu cầu rút
+    /// tiền), ghi 1 dòng WalletTransaction (sổ cái toàn hệ thống) + 1 dòng MainOrderPaymentHistory (lịch sử
+    /// thanh toán riêng theo đơn, để sau này hiển thị ở trang chi tiết đơn hàng quản lý).
+    /// </summary>
+    public async Task<MainOrderDepositResult> DepositAsync(Guid orderId, Guid customerUserId, CancellationToken cancellationToken = default)
+    {
+        var order = await _dbContext.MainOrders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+        if (order is null || order.UserId != customerUserId)
+        {
+            return new MainOrderDepositResult(false, "Không tìm thấy đơn hàng.", null, null, null, null);
+        }
+
+        if (order.Status != MainOrderStatus.AwaitingDeposit)
+        {
+            return new MainOrderDepositResult(false, "Đơn hàng không ở trạng thái chờ đặt cọc.", null, null, null, null);
+        }
+
+        if (order.DepositAmount <= 0)
+        {
+            return new MainOrderDepositResult(false, "Đơn hàng chưa có số tiền cần đặt cọc.", null, null, null, null);
+        }
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == customerUserId, cancellationToken);
+        if (user is null)
+        {
+            return new MainOrderDepositResult(false, "Không tìm thấy khách hàng.", null, null, null, null);
+        }
+
+        if (user.WalletBalance < order.DepositAmount)
+        {
+            return new MainOrderDepositResult(false, "Số dư ví không đủ để đặt cọc.", null, null, null, null);
+        }
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        user.WalletBalance -= order.DepositAmount;
+
+        _dbContext.WalletTransactions.Add(new WalletTransaction
+        {
+            Id = Guid.NewGuid(),
+            UserId = customerUserId,
+            Amount = -order.DepositAmount,
+            BalanceAfter = user.WalletBalance,
+            Type = WalletTransactionType.OrderDeposit,
+            ReferenceId = order.Id,
+            Description = $"Đặt cọc đơn {order.OrderCode}",
+            CreatedAtUtc = DateTime.UtcNow,
+            CreatedByUserId = customerUserId,
+        });
+
+        _dbContext.MainOrderPaymentHistories.Add(new MainOrderPaymentHistory
+        {
+            Id = Guid.NewGuid(),
+            MainOrderId = order.Id,
+            Type = MainOrderPaymentType.Deposit,
+            Method = MainOrderPaymentMethod.Wallet,
+            Amount = order.DepositAmount,
+            PerformedByUserId = customerUserId,
+            PaidAtUtc = DateTime.UtcNow,
+        });
+
+        order.AmountPaid += order.DepositAmount;
+        order.Status = MainOrderStatus.Deposited;
+        StampStatusTimestamp(order, MainOrderStatus.Deposited);
+        order.UpdatedAtUtc = DateTime.UtcNow;
+        order.UpdatedByUserId = customerUserId;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return new MainOrderDepositResult(true, null, user.WalletBalance, (int)order.Status, order.AmountPaid, order.TotalAmount - order.AmountPaid);
+    }
+
+    public async Task<MainOrderCancelResult> CancelAsync(Guid orderId, Guid customerUserId, CancellationToken cancellationToken = default)
+    {
+        var order = await _dbContext.MainOrders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+        if (order is null || order.UserId != customerUserId)
+        {
+            return new MainOrderCancelResult(false, "Không tìm thấy đơn hàng.", null);
+        }
+
+        if (order.Status is not (MainOrderStatus.AwaitingQuote or MainOrderStatus.AwaitingDeposit))
+        {
+            return new MainOrderCancelResult(false, "Đơn hàng đã đặt cọc, vui lòng liên hệ nhân viên để huỷ đơn.", null);
+        }
+
+        order.Status = MainOrderStatus.Cancelled;
+        StampStatusTimestamp(order, MainOrderStatus.Cancelled);
+        order.UpdatedAtUtc = DateTime.UtcNow;
+        order.UpdatedByUserId = customerUserId;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return new MainOrderCancelResult(true, null, (int)order.Status);
     }
 
     public async Task<UpdateMainOrderStaffResult> UpdateStaffAsync(Guid orderId, UpdateMainOrderStaffRequest request, Guid actingUserId, CancellationToken cancellationToken = default)

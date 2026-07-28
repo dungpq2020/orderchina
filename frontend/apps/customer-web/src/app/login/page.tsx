@@ -13,6 +13,7 @@ export default function LoginPage() {
         customerApiBaseUrl={process.env.NEXT_PUBLIC_CUSTOMER_API_BASE_URL ?? ""}
         adminApiBaseUrl={process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL ?? ""}
         adminUserListUrl={process.env.NEXT_PUBLIC_ADMIN_USER_LIST_URL ?? "/admin/userlist"}
+        customerDashboardUrl="/dashboard"
       />
     </AuthBackground>
   );

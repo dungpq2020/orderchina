@@ -41,6 +41,7 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>, IDataPro
     public DbSet<WalletWithdrawal> WalletWithdrawals => Set<WalletWithdrawal>();
     public DbSet<MainOrder> MainOrders => Set<MainOrder>();
     public DbSet<MainOrderProduct> MainOrderProducts => Set<MainOrderProduct>();
+    public DbSet<MainOrderPaymentHistory> MainOrderPaymentHistories => Set<MainOrderPaymentHistory>();
 
     public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys => Set<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>();
 

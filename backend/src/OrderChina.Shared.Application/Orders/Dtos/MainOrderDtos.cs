@@ -76,6 +76,16 @@ public record MainOrderListItem(
 
 public record MainOrderListResult(IReadOnlyList<MainOrderListItem> Items, int TotalCount, int Page, int PageSize);
 
+public record MainOrderDepositResult(
+    bool Succeeded,
+    string? Error,
+    decimal? NewWalletBalance,
+    int? Status,
+    decimal? AmountPaid,
+    decimal? RemainingAmount);
+
+public record MainOrderCancelResult(bool Succeeded, string? Error, int? Status);
+
 public record UpdateMainOrderStaffRequest(Guid? OrderStaffId, Guid? SalesStaffId);
 
 public record UpdateMainOrderStaffResult(bool Succeeded, string? Error);
