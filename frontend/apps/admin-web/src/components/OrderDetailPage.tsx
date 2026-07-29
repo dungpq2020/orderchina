@@ -23,6 +23,41 @@ interface ProductDetail {
   note: string | null;
 }
 
+interface PaymentHistoryItem {
+  id: string;
+  type: number;
+  method: number;
+  amount: number;
+  performedByUserId: string;
+  performedByUsername: string | null;
+  paidAtUtc: string;
+}
+
+interface ShopCodeItem {
+  id: string;
+  code: string;
+  createdAtUtc: string;
+  createdByUsername: string | null;
+}
+
+interface TrackingCodeItem {
+  id: string;
+  code: string;
+  weightKg: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
+  volumetricWeightKg: number;
+  status: number;
+  note: string | null;
+  createdAtUtc: string;
+  createdByUsername: string | null;
+  arrivedChinaWarehouseAtUtc: string | null;
+  inTransitToVietnamAtUtc: string | null;
+  arrivedVietnamWarehouseAtUtc: string | null;
+  deliveredToCustomerAtUtc: string | null;
+}
+
 interface OrderDetail {
   id: string;
   orderNumber: number;
@@ -45,6 +80,8 @@ interface OrderDetail {
   purchaseFeeAmount: number;
   shippingFeeCnCny: number;
   shippingFeeCn: number;
+  totalWeightKg: number;
+  unitWeightPriceVnd: number;
   shippingFeeVn: number;
   requestCheckProduct: boolean;
   checkProductFeeAmount: number;
@@ -64,6 +101,12 @@ interface OrderDetail {
   remainingAmount: number;
   note: string | null;
   createdAtUtc: string;
+  paymentHistories: PaymentHistoryItem[];
+  shopCodes: ShopCodeItem[];
+  trackingCodes: TrackingCodeItem[];
+  /** Concurrency token (xmin) — gửi lại nguyên giá trị này ở mỗi request cập nhật để backend phát hiện
+   * đơn đã bị người khác (staff khác, hoặc khách hàng tự đặt cọc/thanh toán) sửa từ lúc trang này tải dữ liệu. */
+  rowVersion: string;
 }
 
 interface ProductRow {
@@ -80,6 +123,24 @@ interface ProductRow {
   locked: boolean;
   /** Đánh dấu hết hàng thay vì xoá dòng gốc — số lượng ép về 0 để tự động trừ khỏi tổng tiền đơn. */
   outOfStock: boolean;
+}
+
+interface ShopCodeRow {
+  key: string;
+  id: string | null;
+  code: string;
+}
+
+interface TrackingCodeRow {
+  key: string;
+  id: string | null;
+  code: string;
+  weightKg: string;
+  lengthCm: string;
+  widthCm: string;
+  heightCm: string;
+  status: string;
+  note: string;
 }
 
 interface OptionItem {
@@ -133,8 +194,67 @@ const CREATION_TYPE_LABELS: Record<number, string> = {
   2: "Đơn mua thủ công",
 };
 
+const PAYMENT_TYPE_LABELS: Record<number, string> = {
+  1: "Đặt cọc",
+  2: "Thanh toán",
+  3: "Hoàn tiền",
+};
+
+/** Đặt cọc/Thanh toán trừ tiền ví khách (-), Hoàn tiền cộng lại (+). */
+const PAYMENT_TYPE_IS_CREDIT: Record<number, boolean> = {
+  1: false,
+  2: false,
+  3: true,
+};
+
+const PAYMENT_METHOD_LABELS: Record<number, string> = {
+  1: "Ví điện tử",
+};
+
+const TRACKING_CODE_STATUS_LABELS: Record<number, string> = {
+  1: "Mới tạo",
+  2: "Về kho TQ",
+  3: "Đang về VN",
+  4: "Về kho VN",
+  5: "Đã giao khách",
+};
+
+/** Ngày ứng với trạng thái HIỆN TẠI của mã vận đơn (đã lưu ở server) — chỉ có sau khi bấm Lưu, đổi trạng thái trên form chưa lưu thì chưa có ngày mới. */
+function trackingCodeStatusDate(item: TrackingCodeItem | undefined): string | null {
+  if (!item) return null;
+  switch (item.status) {
+    case 1:
+      return item.createdAtUtc;
+    case 2:
+      return item.arrivedChinaWarehouseAtUtc;
+    case 3:
+      return item.inTransitToVietnamAtUtc;
+    case 4:
+      return item.arrivedVietnamWarehouseAtUtc;
+    case 5:
+      return item.deliveredToCustomerAtUtc;
+    default:
+      return null;
+  }
+}
+
 function formatMoney(value: number): string {
   return Math.round(value).toLocaleString("vi-VN");
+}
+
+const ROLE_ADMIN = 0;
+
+/** Đọc claim "role" từ access token (JWT) để biết người đang đăng nhập có phải Admin không — chỉ Admin
+ * mới được sửa "Tiền đã trả" (khớp check ở backend UpdateInfoAsync, đây chỉ là chặn ở UI cho gọn form). */
+function decodeJwtRole(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    const role = Number(json.role);
+    return Number.isNaN(role) ? null : role;
+  } catch {
+    return null;
+  }
 }
 
 function toProductRows(products: ProductDetail[]): ProductRow[] {
@@ -166,6 +286,42 @@ function newProductRow(): ProductRow {
     note: "",
     locked: false,
     outOfStock: false,
+  };
+}
+
+function toShopCodeRows(shopCodes: ShopCodeItem[]): ShopCodeRow[] {
+  return shopCodes.map((s) => ({ key: s.id, id: s.id, code: s.code }));
+}
+
+function newShopCodeRow(): ShopCodeRow {
+  return { key: crypto.randomUUID(), id: null, code: "" };
+}
+
+function toTrackingCodeRows(trackingCodes: TrackingCodeItem[]): TrackingCodeRow[] {
+  return trackingCodes.map((t) => ({
+    key: t.id,
+    id: t.id,
+    code: t.code,
+    weightKg: String(t.weightKg),
+    lengthCm: String(t.lengthCm),
+    widthCm: String(t.widthCm),
+    heightCm: String(t.heightCm),
+    status: String(t.status),
+    note: t.note ?? "",
+  }));
+}
+
+function newTrackingCodeRow(): TrackingCodeRow {
+  return {
+    key: crypto.randomUUID(),
+    id: null,
+    code: "",
+    weightKg: "0",
+    lengthCm: "0",
+    widthCm: "0",
+    heightCm: "0",
+    status: "1",
+    note: "",
   };
 }
 
@@ -236,18 +392,43 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
   const [savingExchangeRate, setSavingExchangeRate] = useState(false);
   const [savingInfo, setSavingInfo] = useState(false);
 
+  const [shopCodeRows, setShopCodeRows] = useState<ShopCodeRow[]>([]);
+  const [savingShopCodes, setSavingShopCodes] = useState(false);
+
+  const [trackingCodesOpen, setTrackingCodesOpen] = useState(true);
+  const [trackingCodeRows, setTrackingCodeRows] = useState<TrackingCodeRow[]>([]);
+  const [savingTrackingCodes, setSavingTrackingCodes] = useState(false);
+  const [allTrackingCodesReady, setAllTrackingCodesReady] = useState(false);
+
   const [chinaWarehouses, setChinaWarehouses] = useState<OptionItem[]>([]);
   const [vietnamWarehouses, setVietnamWarehouses] = useState<OptionItem[]>([]);
   const [shippingMethods, setShippingMethods] = useState<OptionItem[]>([]);
+  const [volumetricWeightDivisor, setVolumetricWeightDivisor] = useState(5000);
 
   const seededRef = useRef(false);
+  const seededRowVersionRef = useRef<string | null>(null);
+  const [conflictWarning, setConflictWarning] = useState(false);
+
   useEffect(() => {
     if (state.status !== "ready" || seededRef.current) return;
     seededRef.current = true;
+    seededRowVersionRef.current = state.data.rowVersion;
     setProductRows(toProductRows(state.data.products));
     setFeesForm(toFeesForm(state.data));
     setInfoForm(toInfoForm(state.data));
     setExchangeRateInput(String(state.data.exchangeRateApplied));
+    setShopCodeRows(toShopCodeRows(state.data.shopCodes));
+    setTrackingCodeRows(toTrackingCodeRows(state.data.trackingCodes));
+  }, [state]);
+
+  // Trang tự tải lại đơn ngầm khi quay lại tab (useAuthenticatedList) — nếu rowVersion đổi so với lúc
+  // seed form nghĩa là có người khác (khách hàng đặt cọc, staff khác...) vừa sửa đơn, cảnh báo trước khi
+  // staff bấm Cập nhật để tránh phải chờ tới lúc backend từ chối do concurrency mới biết.
+  useEffect(() => {
+    if (state.status !== "ready" || !seededRef.current) return;
+    if (seededRowVersionRef.current && state.data.rowVersion !== seededRowVersionRef.current) {
+      setConflictWarning(true);
+    }
   }, [state]);
 
   useEffect(() => {
@@ -256,14 +437,19 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
 
     async function loadOptions() {
       try {
-        const [chinaRes, vietnamRes, shippingRes] = await Promise.all([
+        const [chinaRes, vietnamRes, shippingRes, systemConfigRes] = await Promise.all([
           fetch(`${adminApiBaseUrl}/warehouses?type=China`, { headers: { Authorization: `Bearer ${accessToken}` } }),
           fetch(`${adminApiBaseUrl}/warehouses?type=Vietnam`, { headers: { Authorization: `Bearer ${accessToken}` } }),
           fetch(`${adminApiBaseUrl}/shipping-methods`, { headers: { Authorization: `Bearer ${accessToken}` } }),
+          fetch(`${adminApiBaseUrl}/system-config`, { headers: { Authorization: `Bearer ${accessToken}` } }),
         ]);
         if (chinaRes.ok) setChinaWarehouses(await chinaRes.json());
         if (vietnamRes.ok) setVietnamWarehouses(await vietnamRes.json());
         if (shippingRes.ok) setShippingMethods(await shippingRes.json());
+        if (systemConfigRes.ok) {
+          const config = (await systemConfigRes.json()) as { volumetricWeightDivisor: number };
+          if (config.volumetricWeightDivisor > 0) setVolumetricWeightDivisor(config.volumetricWeightDivisor);
+        }
       } catch {
         // Bỏ qua — dropdown sẽ rỗng, staff vẫn có thể thử tải lại trang.
       }
@@ -278,6 +464,68 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
     setFeesForm(toFeesForm(order));
     setInfoForm(toInfoForm(order));
     setExchangeRateInput(String(order.exchangeRateApplied));
+    setShopCodeRows(toShopCodeRows(order.shopCodes));
+    setTrackingCodeRows(toTrackingCodeRows(order.trackingCodes));
+    seededRowVersionRef.current = order.rowVersion;
+    setConflictWarning(false);
+  }
+
+  function updateTrackingCodeRow(key: string, patch: Partial<TrackingCodeRow>) {
+    setTrackingCodeRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function addTrackingCodeRow() {
+    setTrackingCodeRows((prev) => [...prev, newTrackingCodeRow()]);
+  }
+
+  function removeTrackingCodeRow(key: string) {
+    setTrackingCodeRows((prev) => prev.filter((r) => r.key !== key));
+  }
+
+  async function handleSaveTrackingCodes(accessToken: string) {
+    if (!orderId) return;
+
+    for (const r of trackingCodeRows) {
+      if (r.code.trim() === "") {
+        setError("Vui lòng nhập mã vận đơn cho tất cả các dòng.");
+        return;
+      }
+    }
+
+    setError(null);
+    setSavingTrackingCodes(true);
+    try {
+      const res = await fetch(`${adminApiBaseUrl}/main-orders/${orderId}/tracking-codes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          trackingCodes: trackingCodeRows.map((r) => ({
+            id: r.id,
+            code: r.code.trim(),
+            weightKg: Number(r.weightKg || 0),
+            lengthCm: Number(r.lengthCm || 0),
+            widthCm: Number(r.widthCm || 0),
+            heightCm: Number(r.heightCm || 0),
+            status: Number(r.status),
+            note: r.note.trim() === "" ? null : r.note.trim(),
+          })),
+          rowVersion: seededRowVersionRef.current,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (res.status === 409) setConflictWarning(true);
+        setError(body?.error ?? "Lưu mã vận đơn thất bại.");
+        return;
+      }
+      const updated = (await res.json()) as OrderDetail;
+      applyUpdatedOrder(updated, accessToken);
+      setToast({ message: "Đã lưu mã vận đơn", type: "success" });
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setSavingTrackingCodes(false);
+    }
   }
 
   function updateRow(key: string, patch: Partial<ProductRow>) {
@@ -336,10 +584,12 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
             quantity: Number(r.quantity || 0),
             note: r.note.trim() === "" ? null : r.note.trim(),
           })),
+          rowVersion: seededRowVersionRef.current,
         }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 409) setConflictWarning(true);
         setError(body?.error ?? "Lưu sản phẩm thất bại.");
         return;
       }
@@ -350,6 +600,55 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
       setError("Không kết nối được tới máy chủ.");
     } finally {
       setSavingProducts(false);
+    }
+  }
+
+  function updateShopCodeRow(key: string, patch: Partial<ShopCodeRow>) {
+    setShopCodeRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  function addShopCodeRow() {
+    setShopCodeRows((prev) => [...prev, newShopCodeRow()]);
+  }
+
+  function removeShopCodeRow(key: string) {
+    setShopCodeRows((prev) => prev.filter((r) => r.key !== key));
+  }
+
+  async function handleSaveShopCodes(accessToken: string) {
+    if (!orderId) return;
+
+    for (const r of shopCodeRows) {
+      if (r.code.trim() === "") {
+        setError("Vui lòng nhập mã shop cho tất cả các dòng.");
+        return;
+      }
+    }
+
+    setError(null);
+    setSavingShopCodes(true);
+    try {
+      const res = await fetch(`${adminApiBaseUrl}/main-orders/${orderId}/shop-codes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          shopCodes: shopCodeRows.map((r) => ({ id: r.id, code: r.code.trim() })),
+          rowVersion: seededRowVersionRef.current,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (res.status === 409) setConflictWarning(true);
+        setError(body?.error ?? "Lưu mã shop thất bại.");
+        return;
+      }
+      const updated = (await res.json()) as OrderDetail;
+      applyUpdatedOrder(updated, accessToken);
+      setToast({ message: "Đã lưu mã shop", type: "success" });
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setSavingShopCodes(false);
     }
   }
 
@@ -368,10 +667,11 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
       const res = await fetch(`${adminApiBaseUrl}/main-orders/${orderId}/exchange-rate`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ exchangeRateApplied: newRate }),
+        body: JSON.stringify({ exchangeRateApplied: newRate, rowVersion: seededRowVersionRef.current }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 409) setConflictWarning(true);
         setError(body?.error ?? "Cập nhật tỷ giá thất bại.");
         return;
       }
@@ -415,10 +715,12 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
           homeDeliveryFeeAmount: Number(feesForm.homeDeliveryFeeAmount || 0),
           depositAmount: Number(infoForm.depositAmount || 0),
           amountPaid: Number(infoForm.amountPaid || 0),
+          rowVersion: seededRowVersionRef.current,
         }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 409) setConflictWarning(true);
         setError(body?.error ?? "Cập nhật thất bại.");
         return;
       }
@@ -449,12 +751,28 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
   }
 
   const { data: order, accessToken } = state;
+  const isAdmin = decodeJwtRole(accessToken) === ROLE_ADMIN;
   const totalQuantity = productRows.reduce((sum, r) => sum + Number(r.quantity || 0), 0);
   const totalCny = productRows.reduce((sum, r) => sum + Number(r.unitPriceCny || 0) * Number(r.quantity || 0), 0);
   const totalVnd = totalCny * order.exchangeRateApplied;
 
   return (
     <AdminLayout title="Chi tiết đơn hàng" adminApiBaseUrl={adminApiBaseUrl} accessToken={accessToken} onLogout={logout}>
+      {conflictWarning && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>
+            ⚠️ Đơn hàng vừa được cập nhật (có thể do khách hàng hoặc người khác thao tác) — dữ liệu bạn đang xem/sửa có thể đã cũ. Tải lại trang trước khi lưu để tránh ghi đè mất dữ liệu mới.
+          </span>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+          >
+            Tải lại trang
+          </button>
+        </div>
+      )}
+
       <div className="mb-6">
         <Link href="/orders" className="text-sm text-blue-600 hover:underline">
           ← Quay lại danh sách
@@ -585,14 +903,14 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
           <div className="flex gap-2">
             <button
               onClick={addRow}
-              className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+              className="rounded-lg bg-orange-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600"
             >
               + Thêm
             </button>
             <button
               onClick={() => handleSaveProducts(accessToken)}
               disabled={savingProducts}
-              className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+              className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
             >
               {savingProducts ? "Đang lưu..." : "Lưu sản phẩm"}
             </button>
@@ -760,11 +1078,232 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
         </div>
       </div>
 
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
+          <h2 className="font-semibold">Mã shop ({shopCodeRows.length})</h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-medium text-zinc-500">
+              <tr>
+                <th className="px-3 py-2.5">Mã shop</th>
+                <th className="px-3 py-2.5">Ngày tạo</th>
+                <th className="px-3 py-2.5">Người tạo</th>
+                <th className="px-3 py-2.5">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {shopCodeRows.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-zinc-400">
+                    Chưa có mã shop nào.
+                  </td>
+                </tr>
+              )}
+              {shopCodeRows.map((row) => {
+                const original = order.shopCodes.find((s) => s.id === row.id);
+                return (
+                  <tr key={row.key}>
+                    <td className="px-3 py-2">
+                      <input
+                        type="text"
+                        placeholder="Mã đơn hàng"
+                        value={row.code}
+                        onChange={(e) => updateShopCodeRow(row.key, { code: e.target.value })}
+                        className="w-48 rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-xs text-zinc-500">
+                      {original ? formatDateTime(original.createdAtUtc) : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-zinc-500">{original?.createdByUsername ?? "—"}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => removeShopCodeRow(row.key)}
+                        className="shrink-0 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600"
+                      >
+                        Xoá
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-zinc-200 p-4">
+            <button
+              onClick={addShopCodeRow}
+              className="rounded-lg bg-orange-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600"
+            >
+              + Thêm
+            </button>
+            <button
+              onClick={() => handleSaveShopCodes(accessToken)}
+              disabled={savingShopCodes}
+              className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {savingShopCodes ? "Đang lưu..." : "Lưu mã shop"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
+          <h2 className="font-semibold">Mã vận đơn ({trackingCodeRows.length})</h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-medium text-zinc-500">
+              <tr>
+                <th className="px-3 py-2.5">Mã vận đơn</th>
+                  <th className="px-3 py-2.5">Cân nặng</th>
+                  <th className="px-3 py-2.5">Cân quy đổi</th>
+                  <th className="px-3 py-2.5">Kích thước</th>
+                  <th className="px-3 py-2.5">Trạng thái</th>
+                  <th className="px-3 py-2.5">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {trackingCodeRows.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-zinc-400">
+                      Chưa có mã vận đơn nào.
+                    </td>
+                  </tr>
+                )}
+                {trackingCodeRows.map((row) => {
+                  const volumetricWeightKg =
+                    (Number(row.lengthCm || 0) * Number(row.widthCm || 0) * Number(row.heightCm || 0)) /
+                    volumetricWeightDivisor;
+                  return (
+                    <tr key={row.key}>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={row.code}
+                          onChange={(e) => updateTrackingCodeRow(row.key, { code: e.target.value })}
+                          className="w-32 rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={row.weightKg}
+                            onChange={(e) => updateTrackingCodeRow(row.key, { weightKg: e.target.value })}
+                            className="w-20 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                          />
+                          <span className="text-xs text-zinc-500">Kg</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="rounded-lg bg-zinc-100 px-2.5 py-1.5 text-xs text-zinc-500">
+                          {volumetricWeightKg.toFixed(2)} Kg
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            placeholder="Dài"
+                            value={row.lengthCm}
+                            onChange={(e) => updateTrackingCodeRow(row.key, { lengthCm: e.target.value })}
+                            className="w-14 rounded-lg border border-zinc-300 px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                          />
+                          <span className="text-xs text-zinc-400">x</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            placeholder="Rộng"
+                            value={row.widthCm}
+                            onChange={(e) => updateTrackingCodeRow(row.key, { widthCm: e.target.value })}
+                            className="w-14 rounded-lg border border-zinc-300 px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                          />
+                          <span className="text-xs text-zinc-400">x</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            placeholder="Cao"
+                            value={row.heightCm}
+                            onChange={(e) => updateTrackingCodeRow(row.key, { heightCm: e.target.value })}
+                            className="w-14 rounded-lg border border-zinc-300 px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={row.status}
+                          onChange={(e) => updateTrackingCodeRow(row.key, { status: e.target.value })}
+                          className="rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                        >
+                          {Object.entries(TRACKING_CODE_STATUS_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        {(() => {
+                          const original = order.trackingCodes.find((t) => t.id === row.id);
+                          const date = trackingCodeStatusDate(original);
+                          return date ? <div className="mt-1 text-xs text-zinc-400">{formatDateTime(date)}</div> : null;
+                        })()}
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          onClick={() => removeTrackingCodeRow(row.key)}
+                          className="shrink-0 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600"
+                        >
+                          Xoá
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-zinc-200 p-4">
+              <button
+                onClick={addTrackingCodeRow}
+                className="rounded-lg bg-orange-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600"
+              >
+                + Thêm
+              </button>
+              <button
+                onClick={() => handleSaveTrackingCodes(accessToken)}
+                disabled={savingTrackingCodes}
+                className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {savingTrackingCodes ? "Đang lưu..." : "Lưu mã vận đơn"}
+              </button>
+              <label className="flex items-center gap-1.5 text-sm text-zinc-600">
+                <input
+                  type="checkbox"
+                  checked={allTrackingCodesReady}
+                  onChange={(e) => setAllTrackingCodesReady(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300"
+                />
+                Đủ mã vận đơn
+              </label>
+            </div>
+          </div>
+      </div>
+
       {feesForm && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <div className="border-b border-zinc-200 px-4 py-3">
-              <h2 className="font-semibold text-zinc-900">Phí cố định</h2>
+            <div className="border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
+              <h2 className="font-semibold">Phí cố định</h2>
             </div>
             <div className="space-y-4 p-4">
               <FeeRow label="Tỷ giá">
@@ -839,6 +1378,15 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                   {formatMoney(order.purchaseFeeAmount)} đ
                 </div>
               </FeeRow>
+              <hr className="border-zinc-200" />
+              <FeeRow label="Cân nặng">
+                <div className="w-full rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-500">
+                  {order.totalWeightKg.toFixed(2)} Kg
+                  {order.unitWeightPriceVnd > 0 && (
+                    <span className="ml-1 text-xs text-zinc-400">× {formatMoney(order.unitWeightPriceVnd)}đ/Kg</span>
+                  )}
+                </div>
+              </FeeRow>
               <FeeRow label="Phí vc TQ-VN">
                 <MoneyInput
                   value={feesForm.shippingFeeVn}
@@ -850,8 +1398,8 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
           </div>
 
           <div className="rounded-xl border border-zinc-200 bg-white shadow-sm">
-            <div className="border-b border-zinc-200 px-4 py-3">
-              <h2 className="font-semibold text-zinc-900">Phí tùy chọn</h2>
+            <div className="border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
+              <h2 className="font-semibold">Phí tùy chọn</h2>
             </div>
             <div className="space-y-4 p-4">
               <FeeRow
@@ -912,11 +1460,15 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                       />
                     </FeeRow>
                     <FeeRow label="Tiền đã trả">
-                      <MoneyInput
-                        value={infoForm.amountPaid}
-                        onChange={(v) => setInfoForm({ ...infoForm, amountPaid: v })}
-                        className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
+                      <div className="w-full">
+                        <MoneyInput
+                          disabled={!isAdmin}
+                          value={infoForm.amountPaid}
+                          onChange={(v) => setInfoForm({ ...infoForm, amountPaid: v })}
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none disabled:bg-zinc-100 disabled:text-zinc-400"
+                        />
+                        {!isAdmin && <p className="mt-1 text-xs text-zinc-400">Chỉ Admin được sửa</p>}
+                      </div>
                     </FeeRow>
                   </>
                 )}
@@ -929,6 +1481,45 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
         </div>
       )}
         </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
+          <h2 className="font-semibold">Lịch sử thanh toán</h2>
+        </div>
+        {order.paymentHistories.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-zinc-400">Chưa có giao dịch thanh toán nào.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-zinc-200 text-xs font-medium text-zinc-500">
+                <tr>
+                  <th className="px-4 py-2">Thời gian</th>
+                  <th className="px-4 py-2">Loại</th>
+                  <th className="px-4 py-2">Phương thức</th>
+                  <th className="px-4 py-2">Số tiền</th>
+                  <th className="px-4 py-2">Người thực hiện</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.paymentHistories.map((h) => (
+                  <tr key={h.id} className="border-b border-zinc-100 last:border-0">
+                    <td className="px-4 py-2.5 text-zinc-500">{formatDateTime(h.paidAtUtc)}</td>
+                    <td className="px-4 py-2.5 text-zinc-700">{PAYMENT_TYPE_LABELS[h.type] ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-zinc-700">{PAYMENT_METHOD_LABELS[h.method] ?? "—"}</td>
+                    <td
+                      className={`px-4 py-2.5 font-medium ${PAYMENT_TYPE_IS_CREDIT[h.type] ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {PAYMENT_TYPE_IS_CREDIT[h.type] ? "+" : "-"}
+                      {formatMoney(h.amount)} đ
+                    </td>
+                    <td className="px-4 py-2.5 text-zinc-700">{h.performedByUsername ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
 import EditAdminModal from "./EditAdminModal";
@@ -92,9 +92,18 @@ interface AdminListResult {
 
 const PAGE_SIZE = 20;
 
+interface AdminFilters {
+  keyword: string;
+  status: string;
+}
+
+const EMPTY_ADMIN_FILTERS: AdminFilters = { keyword: "", status: "" };
+
 export default function AdminListPage({ adminApiBaseUrl, loginUrl }: AdminListPageProps) {
   const [editing, setEditing] = useState<AdminListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [filters, setFilters] = useState<AdminFilters>(EMPTY_ADMIN_FILTERS);
+  const isFirstFilterRun = useRef(true);
 
   useEffect(() => {
     if (!toast) return;
@@ -104,7 +113,11 @@ export default function AdminListPage({ adminApiBaseUrl, loginUrl }: AdminListPa
 
   const fetchAdmins = useCallback(
     async (targetPage: number, accessToken: string): Promise<AdminListResult> => {
-      const res = await fetch(`${adminApiBaseUrl}/staff/admins?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+      const params = new URLSearchParams({ page: String(targetPage), pageSize: String(PAGE_SIZE) });
+      if (filters.keyword.trim()) params.set("search", filters.keyword.trim());
+      if (filters.status) params.set("status", filters.status);
+
+      const res = await fetch(`${adminApiBaseUrl}/staff/admins?${params.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -114,7 +127,7 @@ export default function AdminListPage({ adminApiBaseUrl, loginUrl }: AdminListPa
 
       return (await res.json()) as AdminListResult;
     },
-    [adminApiBaseUrl],
+    [adminApiBaseUrl, filters],
   );
 
   const { state, page, goToPage, logout, setState } = useAuthenticatedList<AdminListResult>({
@@ -122,6 +135,17 @@ export default function AdminListPage({ adminApiBaseUrl, loginUrl }: AdminListPa
     loginUrl,
     fetchPage: fetchAdmins,
   });
+
+  useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    if (state.status !== "ready") return;
+    const timer = setTimeout(() => goToPage(1), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   function handleAdminSaved(updated: Partial<AdminListItem> & { id: string }) {
     setState((prev) => {
@@ -156,12 +180,54 @@ export default function AdminListPage({ adminApiBaseUrl, loginUrl }: AdminListPa
 
   const { data, accessToken } = state;
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "");
 
   return (
     <AdminLayout title="Danh sách admin" adminApiBaseUrl={adminApiBaseUrl} accessToken={accessToken} onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách admin ({data.totalCount})
       </h1>
+
+      <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Từ khoá</label>
+            <input
+              type="text"
+              value={filters.keyword}
+              onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+              placeholder="Tài khoản, họ tên, SĐT, email..."
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Trạng thái</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              <option value="1">Chưa kích hoạt</option>
+              <option value="2">Khoá tài khoản</option>
+              <option value="3">Đã kích hoạt</option>
+            </select>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setFilters(EMPTY_ADMIN_FILTERS)}
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-50"
+            >
+              Xoá lọc
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">

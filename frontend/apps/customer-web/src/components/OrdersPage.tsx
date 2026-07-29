@@ -60,9 +60,19 @@ interface CancelResult {
   status: number | null;
 }
 
+interface PayResult {
+  succeeded: boolean;
+  error: string | null;
+  newWalletBalance: number | null;
+  status: number | null;
+  amountPaid: number | null;
+  remainingAmount: number | null;
+}
+
 const PAGE_SIZE = 20;
 const STATUS_AWAITING_QUOTE = 1;
 const STATUS_AWAITING_DEPOSIT = 2;
+const STATUS_ARRIVED_VIETNAM_WAREHOUSE = 9;
 
 function formatMoney(value: number): string {
   return value.toLocaleString("vi-VN");
@@ -135,6 +145,8 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
   const [depositConfirmOrder, setDepositConfirmOrder] = useState<MainOrderListItem | null>(null);
   const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null);
   const [cancelConfirmOrder, setCancelConfirmOrder] = useState<MainOrderListItem | null>(null);
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null);
+  const [payConfirmOrder, setPayConfirmOrder] = useState<MainOrderListItem | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -170,6 +182,34 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
     } finally {
       setDepositingOrderId(null);
       setDepositConfirmOrder(null);
+    }
+  }
+
+  async function handlePay(orderId: string) {
+    if (state.status !== "ready") return;
+    const { accessToken } = state;
+
+    setPayingOrderId(orderId);
+    try {
+      const res = await fetch(`${customerApiBaseUrl}/orders/${orderId}/pay`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const body = (await res.json().catch(() => null)) as PayResult | { error: string } | null;
+
+      if (!res.ok || !body || !("succeeded" in body) || !body.succeeded) {
+        const message = body && "error" in body ? body.error : null;
+        setToast({ message: message ?? "Thanh toán thất bại.", type: "error" });
+        return;
+      }
+
+      await fetchOrders(page, accessToken).then((data) => setState({ status: "ready", data, accessToken }));
+      setToast({ message: "Thanh toán thành công.", type: "success" });
+    } catch {
+      setToast({ message: "Không kết nối được tới máy chủ.", type: "error" });
+    } finally {
+      setPayingOrderId(null);
+      setPayConfirmOrder(null);
     }
   }
 
@@ -333,6 +373,15 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
                             {depositingOrderId === o.id ? "Đang xử lý..." : "Đặt cọc"}
                           </button>
                         )}
+                        {o.status === STATUS_ARRIVED_VIETNAM_WAREHOUSE && (
+                          <button
+                            onClick={() => setPayConfirmOrder(o)}
+                            disabled={payingOrderId === o.id}
+                            className="inline-block rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-600"
+                          >
+                            {payingOrderId === o.id ? "Đang xử lý..." : "Thanh toán"}
+                          </button>
+                        )}
                         {(o.status === STATUS_AWAITING_QUOTE || o.status === STATUS_AWAITING_DEPOSIT) && (
                           <button
                             onClick={() => setCancelConfirmOrder(o)}
@@ -421,6 +470,48 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
                     className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {depositingOrderId === depositConfirmOrder.id ? "Đang xử lý..." : "Xác nhận đặt cọc"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {payConfirmOrder && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+                <h2 className="mb-4 text-lg font-semibold text-zinc-900">Xác nhận thanh toán</h2>
+                <p className="text-sm text-zinc-600">
+                  Đơn hàng <span className="font-semibold text-blue-600">{payConfirmOrder.orderCode}</span>
+                </p>
+                <p className="mt-2 text-sm text-zinc-600">
+                  Số tiền cần thanh toán (Tổng tiền - Đã trả) là:{" "}
+                  <span className="text-base font-semibold text-green-600">
+                    {formatMoney(payConfirmOrder.remainingAmount)} đ
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">Số dư ví hiện tại: {formatMoney(me.walletBalance)} đ</p>
+                {me.walletBalance < payConfirmOrder.remainingAmount && (
+                  <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                    Số dư ví không đủ để thanh toán, vui lòng nạp thêm tiền.
+                  </p>
+                )}
+
+                <div className="mt-6 flex justify-end gap-2 border-t border-zinc-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setPayConfirmOrder(null)}
+                    disabled={payingOrderId === payConfirmOrder.id}
+                    className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Huỷ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePay(payConfirmOrder.id)}
+                    disabled={payingOrderId === payConfirmOrder.id || me.walletBalance < payConfirmOrder.remainingAmount}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {payingOrderId === payConfirmOrder.id ? "Đang xử lý..." : "Xác nhận thanh toán"}
                   </button>
                 </div>
               </div>

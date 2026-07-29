@@ -33,6 +33,12 @@ public class SystemConfig
 
     public int CartAutoDeleteDays { get; set; }
 
+    /// <summary>
+    /// Số chia để tính cân quy đổi từ kích thước mã vận đơn: CânQuyĐổi(kg) = Dài×Rộng×Cao(cm) / số này
+    /// (chuẩn hàng không phổ biến là 5000 hoặc 6000) — KHÔNG dùng thể tích (m3) trực tiếp để tính phí.
+    /// </summary>
+    public decimal VolumetricWeightDivisor { get; set; } = 5000;
+
     public decimal SalesCommissionPurchasePercent { get; set; }
 
     public decimal PurchasingStaffCommissionPurchasePercent { get; set; }

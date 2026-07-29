@@ -4,4 +4,5 @@ public enum MainOrderPaymentType
 {
     Deposit = 1,
     Payment = 2,
+    Refund = 3,
 }

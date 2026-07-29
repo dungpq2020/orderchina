@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
 import EditStaffModal from "./EditStaffModal";
@@ -93,6 +93,7 @@ export interface StaffListItem {
   email: string | null;
   phoneNumber: string | null;
   fullName: string;
+  address: string | null;
   role: number;
   status: number;
   walletBalance: number;
@@ -111,9 +112,27 @@ interface StaffListResult {
 
 const PAGE_SIZE = 20;
 
+const STAFF_ROLES = [
+  { value: 2, label: "Nhân viên kinh doanh" },
+  { value: 3, label: "Nhân viên mua hàng" },
+  { value: 4, label: "Nhân viên kho Trung Quốc" },
+  { value: 5, label: "Nhân viên kho Việt Nam" },
+  { value: 6, label: "Kế toán" },
+];
+
+interface StaffFilters {
+  keyword: string;
+  status: string;
+  role: string;
+}
+
+const EMPTY_STAFF_FILTERS: StaffFilters = { keyword: "", status: "", role: "" };
+
 export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPageProps) {
   const [editing, setEditing] = useState<StaffListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [filters, setFilters] = useState<StaffFilters>(EMPTY_STAFF_FILTERS);
+  const isFirstFilterRun = useRef(true);
 
   useEffect(() => {
     if (!toast) return;
@@ -123,7 +142,12 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
 
   const fetchStaff = useCallback(
     async (targetPage: number, accessToken: string): Promise<StaffListResult> => {
-      const res = await fetch(`${adminApiBaseUrl}/staff/list?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+      const params = new URLSearchParams({ page: String(targetPage), pageSize: String(PAGE_SIZE) });
+      if (filters.keyword.trim()) params.set("search", filters.keyword.trim());
+      if (filters.status) params.set("status", filters.status);
+      if (filters.role) params.set("role", filters.role);
+
+      const res = await fetch(`${adminApiBaseUrl}/staff/list?${params.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -133,7 +157,7 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
 
       return (await res.json()) as StaffListResult;
     },
-    [adminApiBaseUrl],
+    [adminApiBaseUrl, filters],
   );
 
   const { state, page, goToPage, logout, setState } = useAuthenticatedList<StaffListResult>({
@@ -141,6 +165,17 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
     loginUrl,
     fetchPage: fetchStaff,
   });
+
+  useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    if (state.status !== "ready") return;
+    const timer = setTimeout(() => goToPage(1), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   function handleStaffSaved(updated: Partial<StaffListItem> & { id: string }) {
     setState((prev) => {
@@ -175,12 +210,70 @@ export default function StaffListPage({ adminApiBaseUrl, loginUrl }: StaffListPa
 
   const { data, accessToken } = state;
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "");
 
   return (
     <AdminLayout title="Danh sách nhân viên" adminApiBaseUrl={adminApiBaseUrl} accessToken={accessToken} onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách nhân viên ({data.totalCount})
       </h1>
+
+      <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Từ khoá</label>
+            <input
+              type="text"
+              value={filters.keyword}
+              onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+              placeholder="Tài khoản, họ tên, SĐT, email..."
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Trạng thái</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              <option value="1">Chưa kích hoạt</option>
+              <option value="2">Khoá tài khoản</option>
+              <option value="3">Đã kích hoạt</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Quyền hạn</label>
+            <select
+              value={filters.role}
+              onChange={(e) => setFilters((prev) => ({ ...prev, role: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {STAFF_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setFilters(EMPTY_STAFF_FILTERS)}
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-50"
+            >
+              Xoá lọc
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">

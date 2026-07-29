@@ -15,6 +15,7 @@ export default function EditStaffModal({ staff, adminApiBaseUrl, accessToken, on
   const [fullName, setFullName] = useState(staff.fullName);
   const [email, setEmail] = useState(staff.email ?? "");
   const [phoneNumber, setPhoneNumber] = useState(staff.phoneNumber ?? "");
+  const [address, setAddress] = useState(staff.address ?? "");
   const [changePassword, setChangePassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [status, setStatus] = useState(staff.status);
@@ -45,6 +46,7 @@ export default function EditStaffModal({ staff, adminApiBaseUrl, accessToken, on
           fullName,
           email: email.trim() === "" ? null : email,
           phoneNumber: phoneNumber.trim() === "" ? null : phoneNumber,
+          address: address.trim() === "" ? null : address,
           newPassword: changePassword ? newPassword : null,
           status,
           role,
@@ -114,6 +116,16 @@ export default function EditStaffModal({ staff, adminApiBaseUrl, accessToken, on
                 type="text"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-zinc-700">Địa chỉ</label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
                 className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none"
               />
             </div>

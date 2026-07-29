@@ -70,7 +70,19 @@ public class MainOrder
     /// <summary>ActualPurchaseAmountCny × ExchangeRateApplied — lưu sẵn cùng lý do với ShippingFeeCn.</summary>
     public decimal ActualPurchaseAmountVnd { get; set; }
 
-    /// <summary>Phí vận chuyển TQ-VN — chỉ tính được khi đơn đã gắn mã vận đơn (FeeWeight theo cân nặng thực tế).</summary>
+    /// <summary>
+    /// Cân nặng tính phí (kg) = Σ mỗi mã vận đơn lấy max(cân thật, cân quy đổi) — tự tính lại mỗi khi
+    /// Lưu mã vận đơn, dùng để tra FeeWeight ra <see cref="ShippingFeeVn"/> tự động.
+    /// </summary>
+    public decimal TotalWeightKg { get; set; }
+
+    /// <summary>
+    /// Đơn giá cân (đ/kg) — snapshot FeeWeight.Price của bậc khớp lúc tính ShippingFeeVn, lưu lại để biết
+    /// đơn này đang áp giá nào (đổi bậc phí sau này không làm sai lệch đơn giá đã áp cho đơn cũ).
+    /// </summary>
+    public decimal UnitWeightPriceVnd { get; set; }
+
+    /// <summary>Phí vận chuyển TQ-VN — tự tính từ TotalWeightKg tra bảng FeeWeight khi Lưu mã vận đơn, staff vẫn sửa tay được sau đó.</summary>
     public decimal ShippingFeeVn { get; set; }
 
     /// <summary>Dịch vụ đóng gỗ — chưa có bảng phí cấu hình, chỉ lưu cờ yêu cầu, phí nhập tay ở trang chi tiết đơn.</summary>

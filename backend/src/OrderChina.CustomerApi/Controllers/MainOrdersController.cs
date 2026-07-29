@@ -37,6 +37,18 @@ public class MainOrdersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{id:guid}/pay")]
+    public async Task<IActionResult> Pay(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.PayAsync(id, GetCurrentUserId(), cancellationToken);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {

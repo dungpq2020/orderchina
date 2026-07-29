@@ -21,7 +21,7 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         _userManager = userManager;
     }
 
-    public async Task<CustomerListResult> GetCustomersAsync(int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<CustomerListResult> GetCustomersAsync(int page, int pageSize, CustomerListFilter filter, CancellationToken cancellationToken = default)
     {
         page = page < 1 ? 1 : page;
         pageSize = pageSize is < 1 or > 200 ? 20 : pageSize;
@@ -29,6 +29,51 @@ public class CustomerDirectoryService : ICustomerDirectoryService
         var query = _dbContext.Users
             .AsNoTracking()
             .Where(u => u.UserType == UserType.Customer);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var pattern = $"%{filter.Search.Trim()}%";
+            query = query.Where(u =>
+                EF.Functions.ILike(u.UserName!, pattern) ||
+                EF.Functions.ILike(u.FullName, pattern) ||
+                (u.PhoneNumber != null && EF.Functions.ILike(u.PhoneNumber, pattern)) ||
+                (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
+        }
+
+        if (filter.Status is { } status)
+        {
+            query = query.Where(u => (int)u.Status == status);
+        }
+
+        if (filter.Tier is { } tier)
+        {
+            query = query.Where(u => u.Tier == tier);
+        }
+
+        if (filter.SalesStaffId is { } salesStaffId)
+        {
+            query = query.Where(u => u.SalesStaffId == salesStaffId);
+        }
+
+        if (filter.OrderStaffId is { } orderStaffId)
+        {
+            query = query.Where(u => u.OrderStaffId == orderStaffId);
+        }
+
+        if (filter.ChinaWarehouseId is { } chinaWarehouseId)
+        {
+            query = query.Where(u => u.ChinaWarehouseId == chinaWarehouseId);
+        }
+
+        if (filter.VietnamWarehouseId is { } vietnamWarehouseId)
+        {
+            query = query.Where(u => u.VietnamWarehouseId == vietnamWarehouseId);
+        }
+
+        if (filter.ShippingMethodId is { } shippingMethodId)
+        {
+            query = query.Where(u => u.ShippingMethodId == shippingMethodId);
+        }
 
         var totalCount = await query.CountAsync(cancellationToken);
 

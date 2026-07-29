@@ -24,9 +24,21 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetCustomers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetCustomers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] int? status = null,
+        [FromQuery] int? tier = null,
+        [FromQuery] Guid? salesStaffId = null,
+        [FromQuery] Guid? orderStaffId = null,
+        [FromQuery] Guid? chinaWarehouseId = null,
+        [FromQuery] Guid? vietnamWarehouseId = null,
+        [FromQuery] Guid? shippingMethodId = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _customerDirectoryService.GetCustomersAsync(page, pageSize, cancellationToken);
+        var filter = new CustomerListFilter(search, status, tier, salesStaffId, orderStaffId, chinaWarehouseId, vietnamWarehouseId, shippingMethodId);
+        var result = await _customerDirectoryService.GetCustomersAsync(page, pageSize, filter, cancellationToken);
         return Ok(result);
     }
 

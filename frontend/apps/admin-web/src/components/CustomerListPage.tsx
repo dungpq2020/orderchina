@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
@@ -13,6 +14,55 @@ interface CustomerListPageProps {
   adminApiBaseUrl: string;
   loginUrl: string;
 }
+
+const ROLE_SALES_STAFF = 2;
+const ROLE_PURCHASING_STAFF = 3;
+
+interface StaffOption {
+  id: string;
+  username: string;
+  fullName: string;
+  role: number;
+}
+
+interface WarehouseOption {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface ShippingMethodOption {
+  id: string;
+  name: string;
+}
+
+interface UserLevelOption {
+  id: string;
+  name: string;
+  rank: number;
+}
+
+interface CustomerFilters {
+  keyword: string;
+  status: string;
+  tier: string;
+  salesStaffId: string;
+  orderStaffId: string;
+  chinaWarehouseId: string;
+  vietnamWarehouseId: string;
+  shippingMethodId: string;
+}
+
+const EMPTY_FILTERS: CustomerFilters = {
+  keyword: "",
+  status: "",
+  tier: "",
+  salesStaffId: "",
+  orderStaffId: "",
+  chinaWarehouseId: "",
+  vietnamWarehouseId: "",
+  shippingMethodId: "",
+};
 
 function PersonIcon({ className }: { className?: string }) {
   return (
@@ -47,6 +97,62 @@ function MailIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
       <path d="M3 4a2 2 0 00-2 2v.4l9 5.4 9-5.4V6a2 2 0 00-2-2H3z" />
       <path d="M18 8.6l-8.55 5.13a1 1 0 01-.9 0L1 8.6V14a2 2 0 002 2h14a2 2 0 002-2V8.6z" />
+    </svg>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path
+        fillRule="evenodd"
+        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+    </svg>
+  );
+}
+
+function PlusCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function MinusCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -117,6 +223,17 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
   const [withdrawing, setWithdrawing] = useState<CustomerListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [levelNameByRank, setLevelNameByRank] = useState<Record<number, string>>({});
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuTriggerRectRef = useRef<{ top: number; right: number } | null>(null);
+
+  const [filters, setFilters] = useState<CustomerFilters>(EMPTY_FILTERS);
+  const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
+  const [chinaWarehouses, setChinaWarehouses] = useState<WarehouseOption[]>([]);
+  const [vietnamWarehouses, setVietnamWarehouses] = useState<WarehouseOption[]>([]);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethodOption[]>([]);
+  const [userLevels, setUserLevels] = useState<UserLevelOption[]>([]);
+  const isFirstFilterRun = useRef(true);
 
   useEffect(() => {
     if (!toast) return;
@@ -124,9 +241,55 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
     return () => clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    function handleOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    function handleScroll() {
+      setOpenMenuId(null);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [openMenuId]);
+
+  useLayoutEffect(() => {
+    if (!openMenuId || !menuRef.current || !menuTriggerRectRef.current) return;
+    const { top, right } = menuTriggerRectRef.current;
+    const width = menuRef.current.offsetWidth;
+    menuRef.current.style.top = `${top}px`;
+    menuRef.current.style.left = `${right - width}px`;
+  }, [openMenuId]);
+
+  function toggleActionsMenu(id: string, e: React.MouseEvent<HTMLButtonElement>) {
+    if (openMenuId === id) {
+      setOpenMenuId(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    menuTriggerRectRef.current = { top: rect.bottom + 6, right: rect.right };
+    setOpenMenuId(id);
+  }
+
   const fetchCustomers = useCallback(
     async (targetPage: number, accessToken: string): Promise<CustomerListResult> => {
-      const res = await fetch(`${adminApiBaseUrl}/customers?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+      const params = new URLSearchParams({ page: String(targetPage), pageSize: String(PAGE_SIZE) });
+      if (filters.keyword.trim()) params.set("search", filters.keyword.trim());
+      if (filters.status) params.set("status", filters.status);
+      if (filters.tier) params.set("tier", filters.tier);
+      if (filters.salesStaffId) params.set("salesStaffId", filters.salesStaffId);
+      if (filters.orderStaffId) params.set("orderStaffId", filters.orderStaffId);
+      if (filters.chinaWarehouseId) params.set("chinaWarehouseId", filters.chinaWarehouseId);
+      if (filters.vietnamWarehouseId) params.set("vietnamWarehouseId", filters.vietnamWarehouseId);
+      if (filters.shippingMethodId) params.set("shippingMethodId", filters.shippingMethodId);
+
+      const res = await fetch(`${adminApiBaseUrl}/customers?${params.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -136,7 +299,7 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
       return (await res.json()) as CustomerListResult;
     },
-    [adminApiBaseUrl],
+    [adminApiBaseUrl, filters],
   );
 
   const { state, page, goToPage, logout, setState } = useAuthenticatedList<CustomerListResult>({
@@ -146,14 +309,34 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
   });
 
   useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
     if (state.status !== "ready") return;
+    const timer = setTimeout(() => goToPage(1), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
-    fetch(`${adminApiBaseUrl}/user-level/list`, {
-      headers: { Authorization: `Bearer ${state.accessToken}` },
-    })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((levels: { rank: number; name: string }[]) => {
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    const headers = { Authorization: `Bearer ${state.accessToken}` };
+
+    Promise.all([
+      fetch(`${adminApiBaseUrl}/user-level/list`, { headers }).then((res) => (res.ok ? res.json() : [])),
+      fetch(`${adminApiBaseUrl}/staff`, { headers }).then((res) => (res.ok ? res.json() : [])),
+      fetch(`${adminApiBaseUrl}/warehouses?type=China`, { headers }).then((res) => (res.ok ? res.json() : [])),
+      fetch(`${adminApiBaseUrl}/warehouses?type=Vietnam`, { headers }).then((res) => (res.ok ? res.json() : [])),
+      fetch(`${adminApiBaseUrl}/shipping-methods`, { headers }).then((res) => (res.ok ? res.json() : [])),
+    ])
+      .then(([levels, staff, china, vietnam, shipping]: [UserLevelOption[], StaffOption[], WarehouseOption[], WarehouseOption[], ShippingMethodOption[]]) => {
         setLevelNameByRank(Object.fromEntries(levels.map((l) => [l.rank, l.name])));
+        setUserLevels(levels);
+        setStaffOptions(staff);
+        setChinaWarehouses(china);
+        setVietnamWarehouses(vietnam);
+        setShippingMethods(shipping);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,12 +405,156 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
 
   const { data, accessToken } = state;
   const totalPages = Math.max(1, Math.ceil(data.totalCount / data.pageSize));
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "");
 
   return (
     <AdminLayout title="Danh sách khách hàng" adminApiBaseUrl={adminApiBaseUrl} accessToken={accessToken} onLogout={logout}>
       <h1 className="mb-6 text-xl font-semibold text-zinc-900">
         Danh sách khách hàng ({data.totalCount})
       </h1>
+
+      <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Từ khoá</label>
+            <input
+              type="text"
+              value={filters.keyword}
+              onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+              placeholder="Tài khoản, họ tên, SĐT, email..."
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Trạng thái</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              <option value="1">Chưa kích hoạt</option>
+              <option value="2">Khoá tài khoản</option>
+              <option value="3">Đã kích hoạt</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Cấp bậc</label>
+            <select
+              value={filters.tier}
+              onChange={(e) => setFilters((prev) => ({ ...prev, tier: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {[...userLevels]
+                .sort((a, b) => a.rank - b.rank)
+                .map((level) => (
+                  <option key={level.id} value={level.rank}>
+                    {level.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Nhân viên kinh doanh</label>
+            <select
+              value={filters.salesStaffId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, salesStaffId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {staffOptions
+                .filter((s) => s.role === ROLE_SALES_STAFF)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.username}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Nhân viên đặt hàng</label>
+            <select
+              value={filters.orderStaffId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, orderStaffId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {staffOptions
+                .filter((s) => s.role === ROLE_PURCHASING_STAFF)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.username}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Kho Trung Quốc</label>
+            <select
+              value={filters.chinaWarehouseId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, chinaWarehouseId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {chinaWarehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Kho Việt Nam</label>
+            <select
+              value={filters.vietnamWarehouseId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, vietnamWarehouseId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {vietnamWarehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Phương thức vận chuyển</label>
+            <select
+              value={filters.shippingMethodId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, shippingMethodId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {shippingMethods.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setFilters(EMPTY_FILTERS)}
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-50"
+            >
+              Xoá lọc
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -306,32 +633,64 @@ export default function CustomerListPage({ adminApiBaseUrl, loginUrl }: Customer
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => setEditing(c)}
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-200"
-                    >
-                      Cập nhật
-                    </button>
-                    <button
-                      onClick={() => setRecharging(c)}
-                      className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600 transition hover:border-orange-300 hover:bg-orange-50"
-                    >
-                      Nạp ví
-                    </button>
-                    <button
-                      onClick={() => setWithdrawing(c)}
-                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:border-red-300 hover:bg-red-50"
-                    >
-                      Rút ví
-                    </button>
-                    <Link
-                      href={`/wallettransactions?userId=${c.id}`}
-                      className="rounded-lg border border-blue-200 px-3 py-1.5 text-center text-xs font-medium text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      Lịch sử giao dịch
-                    </Link>
-                  </div>
+                  <button
+                    onClick={(e) => toggleActionsMenu(c.id, e)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 shadow-sm transition hover:bg-orange-100"
+                  >
+                    <InfoIcon className="h-3.5 w-3.5" />
+                    Thao tác
+                  </button>
+                  {openMenuId === c.id &&
+                    createPortal(
+                      <div
+                        ref={menuRef}
+                        style={{ position: "fixed", top: 0, left: 0 }}
+                        className="z-50 w-max overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg"
+                      >
+                        <button
+                          onClick={() => {
+                            setEditing(c);
+                            setOpenMenuId(null);
+                          }}
+                          className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                        >
+                          <PencilIcon className="h-4 w-4 text-zinc-400" />
+                          Cập nhật
+                        </button>
+                        <div className="border-t border-zinc-100" />
+                        <button
+                          onClick={() => {
+                            setRecharging(c);
+                            setOpenMenuId(null);
+                          }}
+                          className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                        >
+                          <PlusCircleIcon className="h-4 w-4 text-zinc-400" />
+                          Nạp ví
+                        </button>
+                        <div className="border-t border-zinc-100" />
+                        <button
+                          onClick={() => {
+                            setWithdrawing(c);
+                            setOpenMenuId(null);
+                          }}
+                          className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                        >
+                          <MinusCircleIcon className="h-4 w-4 text-zinc-400" />
+                          Rút ví
+                        </button>
+                        <div className="border-t border-zinc-100" />
+                        <Link
+                          href={`/wallettransactions?userId=${c.id}`}
+                          onClick={() => setOpenMenuId(null)}
+                          className="flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                        >
+                          <ClockIcon className="h-4 w-4 text-zinc-400" />
+                          Lịch sử giao dịch
+                        </Link>
+                      </div>,
+                      document.body,
+                    )}
                 </td>
               </tr>
             ))}

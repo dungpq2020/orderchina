@@ -29,14 +29,15 @@ public class StaffDirectoryService : IStaffDirectoryService
             .ToListAsync(cancellationToken);
     }
 
-    public Task<StaffDirectoryListResult> GetStaffListAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
-        GetListAsync(u => u.UserType == UserType.Staff && u.Role != Role.Admin, page, pageSize, cancellationToken);
+    public Task<StaffDirectoryListResult> GetStaffListAsync(int page, int pageSize, StaffListFilter filter, CancellationToken cancellationToken = default) =>
+        GetListAsync(u => u.UserType == UserType.Staff && u.Role != Role.Admin, filter, page, pageSize, cancellationToken);
 
-    public Task<StaffDirectoryListResult> GetAdminsAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
-        GetListAsync(u => u.UserType == UserType.Staff && u.Role == Role.Admin, page, pageSize, cancellationToken);
+    public Task<StaffDirectoryListResult> GetAdminsAsync(int page, int pageSize, StaffListFilter filter, CancellationToken cancellationToken = default) =>
+        GetListAsync(u => u.UserType == UserType.Staff && u.Role == Role.Admin, filter, page, pageSize, cancellationToken);
 
     private async Task<StaffDirectoryListResult> GetListAsync(
         System.Linq.Expressions.Expression<Func<ApplicationUser, bool>> predicate,
+        StaffListFilter filter,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -45,6 +46,26 @@ public class StaffDirectoryService : IStaffDirectoryService
         pageSize = pageSize is < 1 or > 200 ? 20 : pageSize;
 
         var query = _dbContext.Users.AsNoTracking().Where(predicate);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var pattern = $"%{filter.Search.Trim()}%";
+            query = query.Where(u =>
+                EF.Functions.ILike(u.UserName!, pattern) ||
+                EF.Functions.ILike(u.FullName, pattern) ||
+                (u.PhoneNumber != null && EF.Functions.ILike(u.PhoneNumber, pattern)) ||
+                (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
+        }
+
+        if (filter.Status is { } status)
+        {
+            query = query.Where(u => (int)u.Status == status);
+        }
+
+        if (filter.Role is { } role)
+        {
+            query = query.Where(u => (int)u.Role == role);
+        }
 
         var totalCount = await query.CountAsync(cancellationToken);
 

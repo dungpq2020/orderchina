@@ -34,6 +34,19 @@ public record CustomerListItem(
 
 public record CustomerListResult(IReadOnlyList<CustomerListItem> Items, int TotalCount, int Page, int PageSize);
 
+public record CustomerListFilter(
+    string? Search,
+    int? Status,
+    int? Tier,
+    Guid? SalesStaffId,
+    Guid? OrderStaffId,
+    Guid? ChinaWarehouseId,
+    Guid? VietnamWarehouseId,
+    Guid? ShippingMethodId)
+{
+    public static readonly CustomerListFilter Empty = new(null, null, null, null, null, null, null, null);
+}
+
 public record UpdateCustomerRequest(
     string FullName,
     string? Email,

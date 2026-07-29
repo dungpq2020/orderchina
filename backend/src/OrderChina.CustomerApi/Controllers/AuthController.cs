@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Hosting;
 using OrderChina.Shared.Application.Auth;
 using OrderChina.Shared.Application.Auth.Dtos;
 using OrderChina.Shared.Domain.Auth;
@@ -21,15 +22,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<RegisterCustomerRequest> _registerValidator;
+    private readonly IHostEnvironment _environment;
 
     public AuthController(
         IAuthService authService,
         IValidator<LoginRequest> loginValidator,
-        IValidator<RegisterCustomerRequest> registerValidator)
+        IValidator<RegisterCustomerRequest> registerValidator,
+        IHostEnvironment environment)
     {
         _authService = authService;
         _loginValidator = loginValidator;
         _registerValidator = registerValidator;
+        _environment = environment;
     }
 
     [HttpPost("register")]
@@ -156,7 +160,11 @@ public class AuthController : ControllerBase
         Response.Cookies.Append(RefreshCookieName, refreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            // Secure=true bắt buộc browser chỉ gửi cookie qua HTTPS — production luôn chạy HTTPS nên
+            // giữ true, nhưng local dev chạy http://localhost thường (không phải luôn được trình duyệt
+            // coi là "trustworthy origin" nhất quán giữa các browser/chế độ ẩn danh), khiến cookie set
+            // xong bị âm thầm không lưu → /auth/refresh sau đó luôn thất bại dù vừa đăng nhập thành công.
+            Secure = !_environment.IsDevelopment(),
             SameSite = SameSiteMode.Strict,
             Path = CookiePath,
             Expires = expiresAtUtc

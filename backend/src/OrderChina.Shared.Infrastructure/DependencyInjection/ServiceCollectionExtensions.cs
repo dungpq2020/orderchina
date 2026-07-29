@@ -88,9 +88,9 @@ public static class ServiceCollectionExtensions
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredUniqueChars = 5;
 
-                // Chống brute-force: khoá 15 phút sau 5 lần sai (đếm tự động qua SignInManager/UserManager).
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-                options.Lockout.MaxFailedAccessAttempts = 5;
+                // Chống brute-force: khoá 1 phút sau 20 lần sai (đếm tự động qua SignInManager/UserManager).
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1);
+                options.Lockout.MaxFailedAccessAttempts = 20;
                 options.Lockout.AllowedForNewUsers = true;
 
                 options.User.RequireUniqueEmail = true;

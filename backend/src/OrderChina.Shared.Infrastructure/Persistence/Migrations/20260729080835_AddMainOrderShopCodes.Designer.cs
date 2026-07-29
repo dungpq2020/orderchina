@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderChina.Shared.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OrderChina.Shared.Infrastructure.Persistence;
 namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260729080835_AddMainOrderShopCodes")]
+    partial class AddMainOrderShopCodes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -718,10 +721,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by_user_id");
 
-                    b.Property<decimal>("VolumetricWeightDivisor")
-                        .HasColumnType("numeric")
-                        .HasColumnName("volumetric_weight_divisor");
-
                     b.Property<string>("WebsiteName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1166,14 +1165,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("total_amount");
 
-                    b.Property<decimal>("TotalWeightKg")
-                        .HasColumnType("numeric")
-                        .HasColumnName("total_weight_kg");
-
-                    b.Property<decimal>("UnitWeightPriceVnd")
-                        .HasColumnType("numeric")
-                        .HasColumnName("unit_weight_price_vnd");
-
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
@@ -1343,92 +1334,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_main_order_shop_codes_main_order_id");
 
                     b.ToTable("main_order_shop_codes", (string)null);
-                });
-
-            modelBuilder.Entity("OrderChina.Shared.Domain.Orders.TrackingCode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime?>("ArrivedChinaWarehouseAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("arrived_china_warehouse_at_utc");
-
-                    b.Property<DateTime?>("ArrivedVietnamWarehouseAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("arrived_vietnam_warehouse_at_utc");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("code");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by_user_id");
-
-                    b.Property<DateTime?>("DeliveredToCustomerAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("delivered_to_customer_at_utc");
-
-                    b.Property<decimal>("HeightCm")
-                        .HasColumnType("numeric")
-                        .HasColumnName("height_cm");
-
-                    b.Property<DateTime?>("InTransitToVietnamAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("in_transit_to_vietnam_at_utc");
-
-                    b.Property<decimal>("LengthCm")
-                        .HasColumnType("numeric")
-                        .HasColumnName("length_cm");
-
-                    b.Property<Guid?>("MainOrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("main_order_id");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("note");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<Guid?>("TransportOrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("transport_order_id");
-
-                    b.Property<decimal>("VolumetricWeightKg")
-                        .HasColumnType("numeric")
-                        .HasColumnName("volumetric_weight_kg");
-
-                    b.Property<decimal>("WeightKg")
-                        .HasColumnType("numeric")
-                        .HasColumnName("weight_kg");
-
-                    b.Property<decimal>("WidthCm")
-                        .HasColumnType("numeric")
-                        .HasColumnName("width_cm");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tracking_codes");
-
-                    b.HasIndex("MainOrderId")
-                        .HasDatabaseName("ix_tracking_codes_main_order_id");
-
-                    b.HasIndex("TransportOrderId")
-                        .HasDatabaseName("ix_tracking_codes_transport_order_id");
-
-                    b.ToTable("tracking_codes", (string)null);
                 });
 
             modelBuilder.Entity("OrderChina.Shared.Domain.Shipping.ShippingMethod", b =>

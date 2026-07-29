@@ -61,6 +61,21 @@ public class MainOrdersController : ControllerBase
         return NoContent();
     }
 
+    private IActionResult ToActionResult(UpdateMainOrderResult result)
+    {
+        if (result.Succeeded)
+        {
+            return Ok(result.Order);
+        }
+
+        if (result.IsConflict)
+        {
+            return Conflict(new { error = result.Error });
+        }
+
+        return BadRequest(new { error = result.Error });
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
@@ -77,48 +92,42 @@ public class MainOrdersController : ControllerBase
     public async Task<IActionResult> UpdateProducts(Guid id, [FromBody] UpdateMainOrderProductsRequest request, CancellationToken cancellationToken)
     {
         var result = await _mainOrderService.UpdateProductsAsync(id, request, GetCurrentUserId(), cancellationToken);
-        if (!result.Succeeded)
-        {
-            return BadRequest(new { error = result.Error });
-        }
-
-        return Ok(result.Order);
+        return ToActionResult(result);
     }
 
     [HttpPut("{id:guid}/exchange-rate")]
     public async Task<IActionResult> UpdateExchangeRate(Guid id, [FromBody] UpdateMainOrderExchangeRateRequest request, CancellationToken cancellationToken)
     {
         var result = await _mainOrderService.UpdateExchangeRateAsync(id, request, GetCurrentUserId(), cancellationToken);
-        if (!result.Succeeded)
-        {
-            return BadRequest(new { error = result.Error });
-        }
-
-        return Ok(result.Order);
+        return ToActionResult(result);
     }
 
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateMainOrderStatusRequest request, CancellationToken cancellationToken)
     {
         var result = await _mainOrderService.UpdateStatusAsync(id, request, GetCurrentUserId(), cancellationToken);
-        if (!result.Succeeded)
-        {
-            return BadRequest(new { error = result.Error });
-        }
-
-        return Ok(result.Order);
+        return ToActionResult(result);
     }
 
     [HttpPut("{id:guid}/info")]
     public async Task<IActionResult> UpdateInfo(Guid id, [FromBody] UpdateMainOrderInfoRequest request, CancellationToken cancellationToken)
     {
         var result = await _mainOrderService.UpdateInfoAsync(id, request, GetCurrentUserId(), cancellationToken);
-        if (!result.Succeeded)
-        {
-            return BadRequest(new { error = result.Error });
-        }
+        return ToActionResult(result);
+    }
 
-        return Ok(result.Order);
+    [HttpPut("{id:guid}/shop-codes")]
+    public async Task<IActionResult> UpdateShopCodes(Guid id, [FromBody] UpdateMainOrderShopCodesRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.UpdateShopCodesAsync(id, request, GetCurrentUserId(), cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpPut("{id:guid}/tracking-codes")]
+    public async Task<IActionResult> UpdateTrackingCodes(Guid id, [FromBody] UpdateMainOrderTrackingCodesRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.UpdateTrackingCodesAsync(id, request, GetCurrentUserId(), cancellationToken);
+        return ToActionResult(result);
     }
 
     private Guid GetCurrentUserId()

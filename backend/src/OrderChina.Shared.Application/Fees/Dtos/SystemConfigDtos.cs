@@ -18,6 +18,7 @@ public record SystemConfigDto(
     decimal PurchasingStaffCommissionPurchasePercent,
     decimal SalesCommissionConsignmentPercent,
     decimal SalesCommissionPaymentPercent,
+    decimal VolumetricWeightDivisor,
     DateTime? UpdatedAtUtc,
     string? UpdatedByUsername);
 
@@ -37,6 +38,7 @@ public record UpdateSystemConfigRequest(
     decimal SalesCommissionPurchasePercent,
     decimal PurchasingStaffCommissionPurchasePercent,
     decimal SalesCommissionConsignmentPercent,
-    decimal SalesCommissionPaymentPercent);
+    decimal SalesCommissionPaymentPercent,
+    decimal VolumetricWeightDivisor);
 
 public record SystemConfigResult(bool Succeeded, string? Error, SystemConfigDto? Config);

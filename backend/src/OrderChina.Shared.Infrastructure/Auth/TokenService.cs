@@ -31,6 +31,7 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Jti, jti),
             new("user_type", user.UserType.ToString()),
+            new("role", ((int)user.Role).ToString()),
             new("security_stamp", user.SecurityStamp ?? string.Empty)
         };
 

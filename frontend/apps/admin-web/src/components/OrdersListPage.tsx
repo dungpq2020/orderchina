@@ -43,6 +43,8 @@ interface MainOrderListItem {
   createdAtUtc: string;
   createdByUsername: string | null;
   timeline: { status: number; atUtc: string }[];
+  shopCodes: string[];
+  trackingCodes: string[];
 }
 
 interface MainOrderListResult {
@@ -330,8 +332,42 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="space-y-1.5">
-                      <div className="mx-auto h-6 w-32 rounded border border-dashed border-zinc-200 bg-zinc-50" title="Chưa có mã shop (nhập sau)" />
-                      <div className="mx-auto h-6 w-32 rounded border border-dashed border-zinc-200 bg-zinc-50" title="Chưa có mã vận đơn (nhập sau)" />
+                      {o.shopCodes.length > 0 ? (
+                        <div className="mx-auto flex w-32 flex-col gap-1">
+                          {o.shopCodes.map((code) => (
+                            <span
+                              key={code}
+                              className="truncate rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
+                              title={code}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          className="mx-auto h-6 w-32 rounded border border-dashed border-zinc-200 bg-zinc-50"
+                          title="Chưa có mã shop (nhập sau)"
+                        />
+                      )}
+                      {o.trackingCodes.length > 0 ? (
+                        <div className="mx-auto flex w-32 flex-col gap-1">
+                          {o.trackingCodes.map((code) => (
+                            <span
+                              key={code}
+                              className="truncate rounded bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700"
+                              title={code}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          className="mx-auto h-6 w-32 rounded border border-dashed border-zinc-200 bg-zinc-50"
+                          title="Chưa có mã vận đơn (nhập sau)"
+                        />
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center text-xs text-zinc-500">

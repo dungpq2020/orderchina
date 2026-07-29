@@ -26,9 +26,16 @@ public class StaffController : ControllerBase
     }
 
     [HttpGet("list")]
-    public async Task<IActionResult> GetStaffList([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetStaffList(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] int? status = null,
+        [FromQuery] int? role = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _staffDirectoryService.GetStaffListAsync(page, pageSize, cancellationToken);
+        var filter = new StaffListFilter(search, status, role);
+        var result = await _staffDirectoryService.GetStaffListAsync(page, pageSize, filter, cancellationToken);
         return Ok(result);
     }
 
@@ -50,9 +57,15 @@ public class StaffController : ControllerBase
     }
 
     [HttpGet("admins")]
-    public async Task<IActionResult> GetAdmins([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetAdmins(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] int? status = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _staffDirectoryService.GetAdminsAsync(page, pageSize, cancellationToken);
+        var filter = new StaffListFilter(search, status, null);
+        var result = await _staffDirectoryService.GetAdminsAsync(page, pageSize, filter, cancellationToken);
         return Ok(result);
     }
 

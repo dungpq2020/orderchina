@@ -17,6 +17,11 @@ public record StaffDirectoryListItem(
 
 public record StaffDirectoryListResult(IReadOnlyList<StaffDirectoryListItem> Items, int TotalCount, int Page, int PageSize);
 
+public record StaffListFilter(string? Search, int? Status, int? Role)
+{
+    public static readonly StaffListFilter Empty = new(null, null, null);
+}
+
 public record UpdateStaffRequest(
     string FullName,
     string? Email,

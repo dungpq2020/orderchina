@@ -25,5 +25,15 @@ public class MainOrderConfiguration : IEntityTypeConfiguration<MainOrder>
             .WithOne()
             .HasForeignKey(p => p.MainOrderId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Dùng cột hệ thống "xmin" của Postgres làm concurrency token — không cần thêm cột/migration.
+        // Chặn "lost update": staff mở trang chi tiết với dữ liệu cũ trong lúc khách vừa đặt cọc/đổi
+        // trạng thái (hoặc bất kỳ thông tin nào khác của đơn), staff bấm Cập nhật sẽ bị từ chối
+        // (DbUpdateConcurrencyException) thay vì ghi đè im lặng. Dùng UseXminAsConcurrencyToken() thay vì
+        // Property<uint>("xmin").IsRowVersion() vì cách sau khiến EF hiểu nhầm là cột user thật, sinh migration
+        // AddColumn "xmin" — trùng tên cột hệ thống, Postgres sẽ từ chối khi chạy migration.
+#pragma warning disable CS0618
+        builder.UseXminAsConcurrencyToken();
+#pragma warning restore CS0618
     }
 }

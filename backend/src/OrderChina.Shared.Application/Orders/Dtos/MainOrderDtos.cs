@@ -72,7 +72,9 @@ public record MainOrderListItem(
     int ProductCount,
     DateTime CreatedAtUtc,
     string? CreatedByUsername,
-    IReadOnlyList<MainOrderTimelineEntry> Timeline);
+    IReadOnlyList<MainOrderTimelineEntry> Timeline,
+    IReadOnlyList<string> ShopCodes,
+    IReadOnlyList<string> TrackingCodes);
 
 public record MainOrderListResult(IReadOnlyList<MainOrderListItem> Items, int TotalCount, int Page, int PageSize);
 
@@ -85,6 +87,14 @@ public record MainOrderDepositResult(
     decimal? RemainingAmount);
 
 public record MainOrderCancelResult(bool Succeeded, string? Error, int? Status);
+
+public record MainOrderPayResult(
+    bool Succeeded,
+    string? Error,
+    decimal? NewWalletBalance,
+    int? Status,
+    decimal? AmountPaid,
+    decimal? RemainingAmount);
 
 public record UpdateMainOrderStaffRequest(Guid? OrderStaffId, Guid? SalesStaffId);
 
@@ -99,6 +109,53 @@ public record MainOrderProductDetail(
     decimal UnitPriceCny,
     int Quantity,
     string? Note);
+
+public record MainOrderShopCodeItem(Guid Id, string Code, DateTime CreatedAtUtc, string? CreatedByUsername);
+
+/// <summary><paramref name="Id"/>: null = dòng mới thêm; có giá trị = dòng đã tồn tại, giữ nguyên CreatedAtUtc/CreatedByUsername cũ.</summary>
+public record MainOrderShopCodeInput(Guid? Id, string Code);
+
+public record UpdateMainOrderShopCodesRequest(IReadOnlyList<MainOrderShopCodeInput> ShopCodes, string? RowVersion = null);
+
+public record MainOrderTrackingCodeItem(
+    Guid Id,
+    string Code,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    /// <summary>Dài×Rộng×Cao / SystemConfig.VolumetricWeightDivisor — cân quy đổi, KHÔNG phải thể tích (m3).</summary>
+    decimal VolumetricWeightKg,
+    int Status,
+    string? Note,
+    DateTime CreatedAtUtc,
+    string? CreatedByUsername,
+    DateTime? ArrivedChinaWarehouseAtUtc,
+    DateTime? InTransitToVietnamAtUtc,
+    DateTime? ArrivedVietnamWarehouseAtUtc,
+    DateTime? DeliveredToCustomerAtUtc);
+
+/// <summary><paramref name="Id"/>: null = dòng mới thêm; có giá trị = dòng đã tồn tại, giữ nguyên CreatedAtUtc/các mốc ngày trạng thái cũ khi cập nhật.</summary>
+public record MainOrderTrackingCodeInput(
+    Guid? Id,
+    string Code,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    int Status,
+    string? Note);
+
+public record UpdateMainOrderTrackingCodesRequest(IReadOnlyList<MainOrderTrackingCodeInput> TrackingCodes, string? RowVersion = null);
+
+public record MainOrderPaymentHistoryItem(
+    Guid Id,
+    int Type,
+    int Method,
+    decimal Amount,
+    Guid PerformedByUserId,
+    string? PerformedByUsername,
+    DateTime PaidAtUtc);
 
 public record MainOrderDetail(
     Guid Id,
@@ -127,6 +184,8 @@ public record MainOrderDetail(
     decimal PurchaseFeeAmount,
     decimal ShippingFeeCnCny,
     decimal ShippingFeeCn,
+    decimal TotalWeightKg,
+    decimal UnitWeightPriceVnd,
     decimal ShippingFeeVn,
     bool RequestCheckProduct,
     decimal CheckProductFeeAmount,
@@ -145,17 +204,24 @@ public record MainOrderDetail(
     decimal AmountPaid,
     decimal RemainingAmount,
     string? Note,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    IReadOnlyList<MainOrderPaymentHistoryItem> PaymentHistories,
+    IReadOnlyList<MainOrderShopCodeItem> ShopCodes,
+    IReadOnlyList<MainOrderTrackingCodeItem> TrackingCodes,
+    /// <summary>Token concurrency (giá trị "xmin" của Postgres) — client gửi lại nguyên giá trị này ở các
+    /// request cập nhật để backend phát hiện đơn đã bị người khác sửa từ lúc tải trang, tránh ghi đè mất dữ liệu.</summary>
+    string RowVersion);
 
 public record GetMainOrderResult(bool Succeeded, string? Error, MainOrderDetail? Order);
 
-public record UpdateMainOrderProductsRequest(IReadOnlyList<MainOrderProductInput> Products);
+public record UpdateMainOrderProductsRequest(IReadOnlyList<MainOrderProductInput> Products, string? RowVersion = null);
 
-public record UpdateMainOrderExchangeRateRequest(decimal ExchangeRateApplied);
+public record UpdateMainOrderExchangeRateRequest(decimal ExchangeRateApplied, string? RowVersion = null);
 
-public record UpdateMainOrderResult(bool Succeeded, string? Error, MainOrderDetail? Order);
+/// <summary><paramref name="IsConflict"/>: true khi thất bại do concurrency (đơn đã bị sửa từ nơi khác) — controller trả 409 thay vì 400 để frontend phân biệt được với lỗi validate thường.</summary>
+public record UpdateMainOrderResult(bool Succeeded, string? Error, MainOrderDetail? Order, bool IsConflict = false);
 
-public record UpdateMainOrderStatusRequest(int Status);
+public record UpdateMainOrderStatusRequest(int Status, string? RowVersion = null);
 
 /// <summary>
 /// Toàn bộ sidebar + khối Phí cố định/Phí tùy chọn trang chi tiết — 1 nút "Cập nhật" duy nhất lưu hết
@@ -176,4 +242,5 @@ public record UpdateMainOrderInfoRequest(
     bool RequestHomeDelivery,
     decimal HomeDeliveryFeeAmount,
     decimal DepositAmount,
-    decimal AmountPaid);
+    decimal AmountPaid,
+    string? RowVersion = null);

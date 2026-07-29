@@ -28,6 +28,11 @@ public class SystemConfigService : ISystemConfigService
             return new SystemConfigResult(false, "Vui lòng nhập tên website.", null);
         }
 
+        if (request.VolumetricWeightDivisor <= 0)
+        {
+            return new SystemConfigResult(false, "Số chia cân quy đổi phải lớn hơn 0.", null);
+        }
+
         var entity = await GetOrCreateEntityAsync(cancellationToken);
 
         entity.WebsiteName = request.WebsiteName;
@@ -46,6 +51,7 @@ public class SystemConfigService : ISystemConfigService
         entity.PurchasingStaffCommissionPurchasePercent = request.PurchasingStaffCommissionPurchasePercent;
         entity.SalesCommissionConsignmentPercent = request.SalesCommissionConsignmentPercent;
         entity.SalesCommissionPaymentPercent = request.SalesCommissionPaymentPercent;
+        entity.VolumetricWeightDivisor = request.VolumetricWeightDivisor;
         entity.UpdatedAtUtc = DateTime.UtcNow;
         entity.UpdatedByUserId = actingUserId;
 
@@ -99,6 +105,7 @@ public class SystemConfigService : ISystemConfigService
             entity.PurchasingStaffCommissionPurchasePercent,
             entity.SalesCommissionConsignmentPercent,
             entity.SalesCommissionPaymentPercent,
+            entity.VolumetricWeightDivisor,
             entity.UpdatedAtUtc,
             updatedByUsername);
     }

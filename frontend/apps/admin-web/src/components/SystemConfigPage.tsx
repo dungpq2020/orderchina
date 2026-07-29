@@ -28,6 +28,7 @@ interface SystemConfigDto {
   purchasingStaffCommissionPurchasePercent: number;
   salesCommissionConsignmentPercent: number;
   salesCommissionPaymentPercent: number;
+  volumetricWeightDivisor: number;
   updatedAtUtc: string | null;
   updatedByUsername: string | null;
 }
@@ -112,6 +113,7 @@ export default function SystemConfigPage({ adminApiBaseUrl, loginUrl }: SystemCo
   const [purchasingStaffCommissionPurchasePercent, setPurchasingStaffCommissionPurchasePercent] = useState("0");
   const [salesCommissionConsignmentPercent, setSalesCommissionConsignmentPercent] = useState("0");
   const [salesCommissionPaymentPercent, setSalesCommissionPaymentPercent] = useState("0");
+  const [volumetricWeightDivisor, setVolumetricWeightDivisor] = useState("5000");
   const [meta, setMeta] = useState<{ updatedAtUtc: string | null; updatedByUsername: string | null }>({
     updatedAtUtc: null,
     updatedByUsername: null,
@@ -140,6 +142,7 @@ export default function SystemConfigPage({ adminApiBaseUrl, loginUrl }: SystemCo
     setPurchasingStaffCommissionPurchasePercent(String(config.purchasingStaffCommissionPurchasePercent));
     setSalesCommissionConsignmentPercent(String(config.salesCommissionConsignmentPercent));
     setSalesCommissionPaymentPercent(String(config.salesCommissionPaymentPercent));
+    setVolumetricWeightDivisor(String(config.volumetricWeightDivisor));
     setMeta({ updatedAtUtc: config.updatedAtUtc, updatedByUsername: config.updatedByUsername });
   }
 
@@ -197,6 +200,7 @@ export default function SystemConfigPage({ adminApiBaseUrl, loginUrl }: SystemCo
           purchasingStaffCommissionPurchasePercent: Number(purchasingStaffCommissionPurchasePercent),
           salesCommissionConsignmentPercent: Number(salesCommissionConsignmentPercent),
           salesCommissionPaymentPercent: Number(salesCommissionPaymentPercent),
+          volumetricWeightDivisor: Number(volumetricWeightDivisor),
         }),
       });
 
@@ -293,6 +297,11 @@ export default function SystemConfigPage({ adminApiBaseUrl, loginUrl }: SystemCo
               label="Số ngày tự động xoá giỏ hàng"
               value={cartAutoDeleteDays}
               onChange={setCartAutoDeleteDays}
+            />
+            <NumberField
+              label="Số chia tính cân quy đổi (Dài×Rộng×Cao/số này)"
+              value={volumetricWeightDivisor}
+              onChange={setVolumetricWeightDivisor}
             />
           </div>
         </div>
