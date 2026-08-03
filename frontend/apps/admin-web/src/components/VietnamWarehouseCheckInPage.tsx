@@ -46,6 +46,7 @@ const TRACKING_CODE_STATUS_COLORS: Record<number, string> = {
 const DELIVERED_TO_CUSTOMER_STATUS = 5;
 
 interface LookupData {
+  id: string;
   code: string;
   status: number;
   weightKg: number;
@@ -146,13 +147,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
     if (trimmed === "" || scanning) return;
     setScanCode("");
 
-    const existing = rowsRef.current.find((r) => r.code.toLowerCase() === trimmed.toLowerCase());
-    if (existing) {
-      document.getElementById(`row-${existing.key}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-      scanInputRef.current?.focus();
-      return;
-    }
-
     setScanning(true);
     try {
       const res = await fetch(`${adminApiBaseUrl}/main-orders/tracking-codes/${encodeURIComponent(trimmed)}`, {
@@ -163,8 +157,28 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
         setToast({ message: body?.error ?? `Không tra được mã (status ${res.status}).`, type: "error" });
         return;
       }
-      const data = (await res.json()) as LookupData;
-      const newRow: ScanRow = {
+      const items = (await res.json()) as LookupData[];
+
+      // Kiện đã giao khách thì bỏ hẳn, không hiện dòng disable.
+      const eligible = items.filter((item) => item.status !== DELIVERED_TO_CUSTOMER_STATUS);
+      if (eligible.length === 0) {
+        setToast({ message: `Mã "${trimmed}" đã giao khách, không thể kiểm kho VN.`, type: "error" });
+        return;
+      }
+
+      // Mã có thể trùng trên nhiều đơn (chưa có ràng buộc duy nhất ở DB) — hiện MỖI kiện thành 1 dòng
+      // riêng để staff tự chọn đúng đơn. Kiện nào đã có sẵn trong danh sách (theo Id, không phải Code) thì
+      // bỏ qua, không thêm trùng — chỉ coi là "đã quét" khi chính kiện đó (đúng đơn) đã có trong danh sách.
+      const newItems = eligible.filter((item) => !rowsRef.current.some((r) => r.data.id === item.id));
+      if (newItems.length === 0) {
+        const firstExisting = rowsRef.current.find((r) => eligible.some((item) => item.id === r.data.id));
+        if (firstExisting) {
+          document.getElementById(`row-${firstExisting.key}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+
+      const newRows: ScanRow[] = newItems.map((data) => ({
         key: crypto.randomUUID(),
         code: trimmed,
         data,
@@ -176,8 +190,8 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
         saving: false,
         saveError: null,
         savedAtLocal: null,
-      };
-      setRows((prev) => [newRow, ...prev]);
+      }));
+      setRows((prev) => [...newRows, ...prev]);
     } catch {
       setToast({ message: "Không kết nối được tới máy chủ.", type: "error" });
     } finally {
@@ -199,6 +213,7 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
+          id: row.data.id,
           code: row.code,
           weightKg: numOrZero(row.weightKg),
           lengthCm: numOrZero(row.lengthCm),
@@ -228,11 +243,21 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
   async function saveAll(accessToken: string) {
     // Lưu tuần tự (không Promise.all) — nhiều mã có thể cùng thuộc 1 đơn, lưu song song dễ đụng
     // concurrency conflict (xmin) trên MainOrder do 2 request cùng sửa 1 đơn gần như đồng thời.
+    let savedCount = 0;
     for (const row of rowsRef.current) {
-      if (row.saving || row.data.status === DELIVERED_TO_CUSTOMER_STATUS || numOrZero(row.weightKg) <= 0) continue;
+      if (row.saving || row.data.status === DELIVERED_TO_CUSTOMER_STATUS) continue;
+      if (numOrZero(row.weightKg) <= 0) {
+        updateRow(row.key, { saveError: "Vui lòng nhập cân nặng." });
+        continue;
+      }
       await saveRow(row, accessToken);
+      savedCount++;
     }
-    setToast({ message: "Đã cập nhật tất cả", type: "success" });
+    setToast(
+      savedCount > 0
+        ? { message: `Đã cập nhật ${savedCount} kiện`, type: "success" }
+        : { message: "Chưa có kiện nào đủ thông tin để cập nhật.", type: "error" },
+    );
   }
 
   function hideRow(key: string) {
@@ -340,7 +365,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                       ? (numOrZero(row.lengthCm) * numOrZero(row.widthCm) * numOrZero(row.heightCm)) /
                         config.volumetricWeightDivisor
                       : 0;
-                  const blocked = row.data.status === DELIVERED_TO_CUSTOMER_STATUS;
 
                   return (
                     <tr
@@ -399,7 +423,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                           type="number"
                           min={0}
                           step="any"
-                          disabled={blocked}
                           value={row.weightKg}
                           onChange={(e) => updateRow(row.key, { weightKg: e.target.value })}
                           className="w-20 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none disabled:bg-zinc-100"
@@ -412,7 +435,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                             type="number"
                             min={0}
                             step="any"
-                            disabled={blocked}
                             value={row.lengthCm}
                             onChange={(e) => updateRow(row.key, { lengthCm: e.target.value })}
                             className="w-16 rounded-lg border border-zinc-300 px-1.5 py-1 text-xs focus:border-orange-500 focus:outline-none disabled:bg-zinc-100"
@@ -424,7 +446,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                             type="number"
                             min={0}
                             step="any"
-                            disabled={blocked}
                             value={row.widthCm}
                             onChange={(e) => updateRow(row.key, { widthCm: e.target.value })}
                             className="w-16 rounded-lg border border-zinc-300 px-1.5 py-1 text-xs focus:border-orange-500 focus:outline-none disabled:bg-zinc-100"
@@ -436,7 +457,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                             type="number"
                             min={0}
                             step="any"
-                            disabled={blocked}
                             value={row.heightCm}
                             onChange={(e) => updateRow(row.key, { heightCm: e.target.value })}
                             className="w-16 rounded-lg border border-zinc-300 px-1.5 py-1 text-xs focus:border-orange-500 focus:outline-none disabled:bg-zinc-100"
@@ -446,7 +466,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                       </td>
                       <td className="px-3 py-2">
                         <textarea
-                          disabled={blocked}
                           value={row.note}
                           onChange={(e) => updateRow(row.key, { note: e.target.value })}
                           rows={2}
@@ -457,7 +476,7 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                         <div className="flex w-fit flex-col gap-1.5">
                           <button
                             onClick={() => saveRow(row, accessToken)}
-                            disabled={blocked || row.saving}
+                            disabled={row.saving}
                             className="whitespace-nowrap rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-50"
                           >
                             {row.saving ? "Đang lưu..." : "Cập nhật"}
@@ -468,7 +487,6 @@ export default function VietnamWarehouseCheckInPage({ adminApiBaseUrl, loginUrl 
                           >
                             Ẩn đi
                           </button>
-                          {blocked && <div className="text-xs text-red-600">Đã giao khách, không thể kiểm kho VN.</div>}
                           {row.saveError && <div className="text-xs text-red-600">{row.saveError}</div>}
                           {row.savedAtLocal && !row.saveError && (
                             <div className="text-xs text-green-600">Đã cập nhật {formatDateTime(row.savedAtLocal)}</div>

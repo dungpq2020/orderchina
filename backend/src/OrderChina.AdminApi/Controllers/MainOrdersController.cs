@@ -43,9 +43,18 @@ public class MainOrdersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetList(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? status = null,
+        [FromQuery] string? search = null,
+        [FromQuery] Guid? orderStaffId = null,
+        [FromQuery] Guid? salesStaffId = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _mainOrderService.GetListAsync(page, pageSize, cancellationToken);
+        var result = await _mainOrderService.GetListAsync(page, pageSize, status, search, orderStaffId, salesStaffId, fromDate, toDate, cancellationToken);
         return Ok(result);
     }
 
@@ -205,7 +214,7 @@ public class MainOrdersController : ControllerBase
             return NotFound(new { error = result.Error });
         }
 
-        return Ok(result.Data);
+        return Ok(result.Items);
     }
 
     private Guid GetCurrentUserId()

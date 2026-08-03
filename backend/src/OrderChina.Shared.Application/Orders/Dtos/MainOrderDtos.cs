@@ -157,7 +157,9 @@ public record UpdateMainOrderTrackingCodesRequest(IReadOnlyList<MainOrderTrackin
 /// cân nặng + kích thước rồi lưu. Server tự tra ra MainOrder tương ứng qua Code, cập nhật cả kiện hàng lẫn
 /// đơn hàng (cân nặng tổng, phí vận chuyển, trạng thái) trong 1 request.
 /// </summary>
+/// <summary><paramref name="Id"/>: kiện cụ thể lấy từ bước tra cứu (bắt buộc dùng khi Code bị trùng trên nhiều đơn) — null thì tự tra theo Code (lấy kiện tạo gần nhất).</summary>
 public record CheckInTrackingCodeChinaWarehouseRequest(
+    Guid? Id,
     string Code,
     decimal WeightKg,
     decimal LengthCm,
@@ -168,9 +170,10 @@ public record CheckInTrackingCodeChinaWarehouseRequest(
 /// <summary>
 /// Trang "Xuất kho Trung Quốc" — quét mã vận đơn đã kiểm hàng (ArrivedChinaWarehouse) để đánh dấu rời kho
 /// TQ, chuyển sang InTransitToVietnam — vẫn cho sửa lại cân/kích thước (cân lại lần cuối trước khi xuất
-/// kho nếu cần), giống hệt CheckInTrackingCodeChinaWarehouseRequest.
+/// kho nếu cần), giống hệt CheckInTrackingCodeChinaWarehouseRequest. <paramref name="Id"/>: xem giải thích ở CheckInTrackingCodeChinaWarehouseRequest.
 /// </summary>
 public record ExportTrackingCodeChinaWarehouseRequest(
+    Guid? Id,
     string Code,
     decimal WeightKg,
     decimal LengthCm,
@@ -181,9 +184,10 @@ public record ExportTrackingCodeChinaWarehouseRequest(
 /// <summary>
 /// Trang "Kiểm kho Việt Nam" — quét mã vận đơn đã xuất kho TQ (InTransitToVietnam) để xác nhận về tới kho
 /// VN, chuyển sang ArrivedVietnamWarehouse — vẫn cho sửa lại cân/kích thước (cân lại khi về VN nếu lệch so
-/// với lúc xuất TQ), giống hệt CheckInTrackingCodeChinaWarehouseRequest.
+/// với lúc xuất TQ), giống hệt CheckInTrackingCodeChinaWarehouseRequest. <paramref name="Id"/>: xem giải thích ở CheckInTrackingCodeChinaWarehouseRequest.
 /// </summary>
 public record CheckInTrackingCodeVietnamWarehouseRequest(
+    Guid? Id,
     string Code,
     decimal WeightKg,
     decimal LengthCm,
@@ -196,6 +200,7 @@ public record CheckInTrackingCodeVietnamWarehouseRequest(
 /// ngữ cảnh đơn hàng (khách, dịch vụ, số sản phẩm) trước khi staff nhập cân/kích thước và bấm Cập nhật.
 /// </summary>
 public record TrackingCodeLookupDto(
+    Guid Id,
     string Code,
     int Status,
     decimal WeightKg,
@@ -215,7 +220,11 @@ public record TrackingCodeLookupDto(
     int ProductTypeCount,
     int ProductQuantityTotal);
 
-public record TrackingCodeLookupResult(bool Succeeded, string? Error, TrackingCodeLookupDto? Data);
+/// <summary>
+/// Code chưa có unique index ở DB — 1 mã có thể trùng trên nhiều đơn (nhập tay sai), nên trả về TẤT CẢ các
+/// kiện khớp mã, không chỉ 1 dòng, để staff tự chọn đúng đơn cần kiểm/xuất.
+/// </summary>
+public record TrackingCodeLookupResult(bool Succeeded, string? Error, IReadOnlyList<TrackingCodeLookupDto> Items);
 
 /// <summary>Trang "Quản lý kiện hàng" — danh sách mã vận đơn của mọi đơn, lọc theo trạng thái + tìm theo mã vận đơn/mã đơn/username.</summary>
 public record TrackingCodeListItem(
@@ -253,6 +262,7 @@ public record MainOrderPaymentHistoryItem(
     decimal Amount,
     Guid PerformedByUserId,
     string? PerformedByUsername,
+    int PerformedByRole,
     DateTime PaidAtUtc);
 
 /// <summary>Trang chi tiết đơn — mục "Lịch sử thao tác", ghi lại mọi hành động làm thay đổi dữ liệu đơn.</summary>

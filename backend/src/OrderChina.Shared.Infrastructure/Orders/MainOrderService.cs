@@ -161,8 +161,80 @@ public class MainOrderService : IMainOrderService
         return new CreateMainOrderResult(true, null, order.Id, order.OrderCode);
     }
 
-    public Task<MainOrderListResult> GetListAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
-        GetListInternalAsync(_dbContext.MainOrders.AsNoTracking(), page, pageSize, cancellationToken);
+    public Task<MainOrderListResult> GetListAsync(
+        int page, int pageSize, int? status = null, string? search = null,
+        Guid? orderStaffId = null, Guid? salesStaffId = null,
+        DateTime? fromDate = null, DateTime? toDate = null, CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.MainOrders.AsNoTracking();
+
+        if (status.HasValue && Enum.IsDefined(typeof(MainOrderStatus), status.Value))
+        {
+            query = query.Where(o => (int)o.Status == status.Value);
+        }
+        if (orderStaffId.HasValue)
+        {
+            query = query.Where(o => o.OrderStaffId == orderStaffId.Value);
+        }
+        if (salesStaffId.HasValue)
+        {
+            query = query.Where(o => o.SalesStaffId == salesStaffId.Value);
+        }
+        // fromDate/toDate là ngày lịch (giờ VN, không kèm giờ) — quy đổi sang mốc UTC đầu ngày để so sánh,
+        // giống cách sinh OrderCode theo ngày VN ở CreateAsync. Có chọn trạng thái thì lọc theo đúng mốc
+        // thời gian đơn ĐẠT trạng thái đó (VD: lọc "Đã thanh toán" theo ngày phải ra đơn thanh toán trong
+        // khoảng đó, không phải đơn tạo trong khoảng đó rồi tình cờ đang ở trạng thái Paid); không chọn
+        // trạng thái thì mặc định lọc theo ngày tạo đơn.
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            var fromDateUtc = fromDate.HasValue ? TimeZoneInfo.ConvertTimeToUtc(fromDate.Value.Date, VnTimeZone) : (DateTime?)null;
+            var toDateEndUtc = toDate.HasValue ? TimeZoneInfo.ConvertTimeToUtc(toDate.Value.Date.AddDays(1), VnTimeZone) : (DateTime?)null;
+            var statusForDate = status.HasValue && Enum.IsDefined(typeof(MainOrderStatus), status.Value) ? (MainOrderStatus)status.Value : (MainOrderStatus?)null;
+
+            query = statusForDate switch
+            {
+                MainOrderStatus.AwaitingDeposit => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.AwaitingDepositAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.AwaitingDepositAtUtc < toDateEndUtc)),
+                MainOrderStatus.Deposited => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.DepositedAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.DepositedAtUtc < toDateEndUtc)),
+                MainOrderStatus.Purchased => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.PurchasedAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.PurchasedAtUtc < toDateEndUtc)),
+                MainOrderStatus.AwaitingShopShipment => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.AwaitingShopShipmentAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.AwaitingShopShipmentAtUtc < toDateEndUtc)),
+                MainOrderStatus.ShopShipped => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.ShopShippedAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.ShopShippedAtUtc < toDateEndUtc)),
+                MainOrderStatus.ArrivedChinaWarehouse => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.ArrivedChinaWarehouseAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.ArrivedChinaWarehouseAtUtc < toDateEndUtc)),
+                MainOrderStatus.InTransitToVietnam => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.InTransitToVietnamAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.InTransitToVietnamAtUtc < toDateEndUtc)),
+                MainOrderStatus.ArrivedVietnamWarehouse => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.ArrivedVietnamWarehouseAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.ArrivedVietnamWarehouseAtUtc < toDateEndUtc)),
+                MainOrderStatus.Paid => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.PaidAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.PaidAtUtc < toDateEndUtc)),
+                MainOrderStatus.Completed => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.CompletedAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.CompletedAtUtc < toDateEndUtc)),
+                MainOrderStatus.Complaint => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.ComplaintAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.ComplaintAtUtc < toDateEndUtc)),
+                MainOrderStatus.Cancelled => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.CancelledAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.CancelledAtUtc < toDateEndUtc)),
+                // AwaitingQuote hoặc không chọn trạng thái — dùng ngày tạo đơn.
+                _ => query.Where(o =>
+                    (!fromDateUtc.HasValue || o.CreatedAtUtc >= fromDateUtc) && (!toDateEndUtc.HasValue || o.CreatedAtUtc < toDateEndUtc)),
+            };
+        }
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search.Trim()}%";
+            query = query.Where(o =>
+                EF.Functions.ILike(o.OrderCode, pattern) ||
+                _dbContext.Users.Any(u => u.Id == o.UserId
+                    && (EF.Functions.ILike(u.UserName!, pattern) || (u.PhoneNumber != null && EF.Functions.ILike(u.PhoneNumber, pattern)))) ||
+                _dbContext.TrackingCodes.Any(t => t.MainOrderId == o.Id && EF.Functions.ILike(t.Code, pattern)) ||
+                _dbContext.MainOrderShopCodes.Any(s => s.MainOrderId == o.Id && EF.Functions.ILike(s.Code, pattern)));
+        }
+
+        return GetListInternalAsync(query, page, pageSize, cancellationToken);
+    }
 
     /// <summary>Trang "Đơn hàng" của customer-web — chỉ thấy đơn của chính mình, dùng lại đúng logic/hình dạng dữ liệu với danh sách admin.</summary>
     public Task<MainOrderListResult> GetCustomerOrdersAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken = default) =>
@@ -1220,7 +1292,7 @@ public class MainOrderService : IMainOrderService
             return new UpdateMainOrderResult(false, "Kích thước không được âm.", null);
         }
 
-        var (trackingCode, findError) = await FindSingleTrackingCodeByCodeAsync(code, cancellationToken);
+        var (trackingCode, findError) = await FindTrackingCodeAsync(request.Id, code, cancellationToken);
         if (findError is not null)
         {
             return new UpdateMainOrderResult(false, findError, null);
@@ -1246,6 +1318,7 @@ public class MainOrderService : IMainOrderService
         }
 
         var divisor = (await _dbContext.SystemConfigs.AsNoTracking().FirstAsync(cancellationToken)).VolumetricWeightDivisor;
+        var measurementChanges = BuildTrackingCodeMeasurementChanges(trackingCode, request.WeightKg, request.LengthCm, request.WidthCm, request.HeightCm);
 
         trackingCode.WeightKg = request.WeightKg;
         trackingCode.LengthCm = request.LengthCm;
@@ -1277,7 +1350,12 @@ public class MainOrderService : IMainOrderService
         await RecalculateTotalsAsync(order, cancellationToken);
         order.UpdatedAtUtc = DateTime.UtcNow;
         order.UpdatedByUserId = actingUserId;
-        LogActivity(order.Id, $"Kiểm hàng kho Trung Quốc — mã vận đơn {trackingCode.Code}", actingUserId);
+        LogActivity(
+            order.Id,
+            measurementChanges.Count > 0
+                ? $"Kiểm hàng kho Trung Quốc — mã vận đơn {trackingCode.Code} — {string.Join("; ", measurementChanges)}"
+                : $"Kiểm hàng kho Trung Quốc — mã vận đơn {trackingCode.Code}",
+            actingUserId);
 
         try
         {
@@ -1315,7 +1393,7 @@ public class MainOrderService : IMainOrderService
             return new UpdateMainOrderResult(false, "Kích thước không được âm.", null);
         }
 
-        var (trackingCode, findError) = await FindSingleTrackingCodeByCodeAsync(code, cancellationToken);
+        var (trackingCode, findError) = await FindTrackingCodeAsync(request.Id, code, cancellationToken);
         if (findError is not null)
         {
             return new UpdateMainOrderResult(false, findError, null);
@@ -1343,6 +1421,7 @@ public class MainOrderService : IMainOrderService
         }
 
         var divisor = (await _dbContext.SystemConfigs.AsNoTracking().FirstAsync(cancellationToken)).VolumetricWeightDivisor;
+        var measurementChanges = BuildTrackingCodeMeasurementChanges(trackingCode, request.WeightKg, request.LengthCm, request.WidthCm, request.HeightCm);
 
         trackingCode.WeightKg = request.WeightKg;
         trackingCode.LengthCm = request.LengthCm;
@@ -1373,7 +1452,12 @@ public class MainOrderService : IMainOrderService
         await RecalculateTotalsAsync(order, cancellationToken);
         order.UpdatedAtUtc = DateTime.UtcNow;
         order.UpdatedByUserId = actingUserId;
-        LogActivity(order.Id, $"Xuất kho Trung Quốc — mã vận đơn {trackingCode.Code}", actingUserId);
+        LogActivity(
+            order.Id,
+            measurementChanges.Count > 0
+                ? $"Xuất kho Trung Quốc — mã vận đơn {trackingCode.Code} — {string.Join("; ", measurementChanges)}"
+                : $"Xuất kho Trung Quốc — mã vận đơn {trackingCode.Code}",
+            actingUserId);
 
         try
         {
@@ -1411,7 +1495,7 @@ public class MainOrderService : IMainOrderService
             return new UpdateMainOrderResult(false, "Kích thước không được âm.", null);
         }
 
-        var (trackingCode, findError) = await FindSingleTrackingCodeByCodeAsync(code, cancellationToken);
+        var (trackingCode, findError) = await FindTrackingCodeAsync(request.Id, code, cancellationToken);
         if (findError is not null)
         {
             return new UpdateMainOrderResult(false, findError, null);
@@ -1437,6 +1521,7 @@ public class MainOrderService : IMainOrderService
         }
 
         var divisor = (await _dbContext.SystemConfigs.AsNoTracking().FirstAsync(cancellationToken)).VolumetricWeightDivisor;
+        var measurementChanges = BuildTrackingCodeMeasurementChanges(trackingCode, request.WeightKg, request.LengthCm, request.WidthCm, request.HeightCm);
 
         trackingCode.WeightKg = request.WeightKg;
         trackingCode.LengthCm = request.LengthCm;
@@ -1457,8 +1542,11 @@ public class MainOrderService : IMainOrderService
             + Math.Max(trackingCode.WeightKg, trackingCode.VolumetricWeightKg);
         await RecalculateShippingFeeVnAsync(order, cancellationToken);
 
-        // Chỉ tự đẩy trạng thái đơn TỚI, không lùi — giống CheckInTrackingCodeChinaWarehouseAsync.
-        if (order.Status < MainOrderStatus.ArrivedVietnamWarehouse)
+        // Chỉ tự đẩy trạng thái đơn TỚI, không lùi — giống CheckInTrackingCodeChinaWarehouseAsync. Riêng
+        // đơn đã thanh toán/hoàn thành thì lùi về "Về kho VN" để thanh toán bù phần phí phát sinh từ
+        // kiện mới quét (đơn nhiều mã vận đơn, các kiện có thể về kho lệch đợt nhau).
+        var reopenedForPayment = order.Status == MainOrderStatus.Paid || order.Status == MainOrderStatus.Completed;
+        if (order.Status < MainOrderStatus.ArrivedVietnamWarehouse || reopenedForPayment)
         {
             order.Status = MainOrderStatus.ArrivedVietnamWarehouse;
             StampStatusTimestamp(order, MainOrderStatus.ArrivedVietnamWarehouse);
@@ -1467,7 +1555,18 @@ public class MainOrderService : IMainOrderService
         await RecalculateTotalsAsync(order, cancellationToken);
         order.UpdatedAtUtc = DateTime.UtcNow;
         order.UpdatedByUserId = actingUserId;
-        LogActivity(order.Id, $"Kiểm kho Việt Nam — mã vận đơn {trackingCode.Code}", actingUserId);
+        {
+            var message = $"Kiểm kho Việt Nam — mã vận đơn {trackingCode.Code}";
+            if (reopenedForPayment)
+            {
+                message += " (đơn đã thanh toán, mở lại chờ thanh toán thêm)";
+            }
+            if (measurementChanges.Count > 0)
+            {
+                message += $" — {string.Join("; ", measurementChanges)}";
+            }
+            LogActivity(order.Id, message, actingUserId);
+        }
 
         try
         {
@@ -1482,53 +1581,76 @@ public class MainOrderService : IMainOrderService
     }
 
     /// <summary>
-    /// Trang "Kiểm hàng kho Trung Quốc" — tra cứu thuần (không sửa dữ liệu) ngay sau khi quét mã, để hiển
-    /// thị ngữ cảnh đơn hàng (khách, dịch vụ, số sản phẩm) trước khi staff nhập cân/kích thước rồi bấm Cập
-    /// nhật (gọi <see cref="CheckInTrackingCodeChinaWarehouseAsync"/>). KHÔNG chặn theo Status ở đây — vẫn
-    /// trả về data để staff nhìn thấy kiện đã ở trạng thái nào, chặn thật sự nằm ở lúc Cập nhật.
+    /// Trang "Kiểm hàng kho Trung Quốc"/"Xuất kho Trung Quốc"/"Kiểm kho Việt Nam" — tra cứu thuần (không
+    /// sửa dữ liệu) ngay sau khi quét mã, để hiển thị ngữ cảnh đơn hàng trước khi staff nhập cân/kích thước
+    /// rồi bấm Cập nhật. Code chưa có unique index ở DB nên trả về TẤT CẢ kiện khớp mã (có thể nhiều đơn) —
+    /// FE hiện mỗi kiện thành 1 dòng riêng, staff tự chọn đúng dòng cần xử lý (gửi kèm Id ở bước Cập nhật để
+    /// không bị nhầm đơn). KHÔNG chặn theo Status ở đây — chặn thật sự nằm ở lúc Cập nhật.
     /// </summary>
     public async Task<TrackingCodeLookupResult> LookupTrackingCodeForChinaWarehouseAsync(string code, CancellationToken cancellationToken = default)
     {
-        var (trackingCode, findError) = await FindSingleTrackingCodeByCodeAsync(code.Trim(), cancellationToken);
-        if (findError is not null)
+        var trimmedCode = code.Trim();
+        if (trimmedCode.Length == 0)
         {
-            return new TrackingCodeLookupResult(false, findError, null);
+            return new TrackingCodeLookupResult(false, "Vui lòng quét hoặc nhập mã vận đơn.", Array.Empty<TrackingCodeLookupDto>());
         }
 
-        if (trackingCode!.MainOrderId is not { } orderId)
+        var trackingCodes = await _dbContext.TrackingCodes.AsNoTracking()
+            .Where(t => t.Code == trimmedCode)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        if (trackingCodes.Count == 0)
         {
-            return new TrackingCodeLookupResult(false, $"Mã vận đơn \"{trackingCode.Code}\" chưa gắn với đơn hàng nào.", null);
+            return new TrackingCodeLookupResult(false, $"Không tìm thấy mã vận đơn \"{trimmedCode}\".", Array.Empty<TrackingCodeLookupDto>());
         }
 
-        var order = await _dbContext.MainOrders.AsNoTracking()
+        var orderIds = trackingCodes.Where(t => t.MainOrderId.HasValue).Select(t => t.MainOrderId!.Value).Distinct().ToList();
+        var orders = await _dbContext.MainOrders.AsNoTracking()
             .Include(o => o.Products)
-            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
-        if (order is null)
+            .Where(o => orderIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id, cancellationToken);
+        var customerIds = orders.Values.Select(o => o.UserId).Distinct().ToList();
+        var customers = await _dbContext.Users.AsNoTracking()
+            .Where(u => customerIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+        var items = new List<TrackingCodeLookupDto>();
+        foreach (var trackingCode in trackingCodes)
         {
-            return new TrackingCodeLookupResult(false, "Không tìm thấy đơn hàng.", null);
+            if (trackingCode.MainOrderId is not { } orderId || !orders.TryGetValue(orderId, out var order))
+            {
+                continue;
+            }
+
+            var customer = customers.GetValueOrDefault(order.UserId);
+            items.Add(new TrackingCodeLookupDto(
+                trackingCode.Id,
+                trackingCode.Code,
+                (int)trackingCode.Status,
+                trackingCode.WeightKg,
+                trackingCode.LengthCm,
+                trackingCode.WidthCm,
+                trackingCode.HeightCm,
+                trackingCode.Note,
+                order.Id,
+                order.OrderCode,
+                (int)order.OrderType,
+                customer?.UserName ?? "—",
+                customer?.PhoneNumber,
+                order.RequestCheckProduct,
+                order.RequestPackaging,
+                order.RequestInsurance,
+                order.RequestHomeDelivery,
+                order.Products.Count,
+                order.Products.Sum(p => p.Quantity)));
         }
 
-        var customer = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == order.UserId, cancellationToken);
+        if (items.Count == 0)
+        {
+            return new TrackingCodeLookupResult(false, $"Mã vận đơn \"{trimmedCode}\" chưa gắn với đơn hàng nào.", Array.Empty<TrackingCodeLookupDto>());
+        }
 
-        return new TrackingCodeLookupResult(true, null, new TrackingCodeLookupDto(
-            trackingCode.Code,
-            (int)trackingCode.Status,
-            trackingCode.WeightKg,
-            trackingCode.LengthCm,
-            trackingCode.WidthCm,
-            trackingCode.HeightCm,
-            trackingCode.Note,
-            order.Id,
-            order.OrderCode,
-            (int)order.OrderType,
-            customer?.UserName ?? "—",
-            customer?.PhoneNumber,
-            order.RequestCheckProduct,
-            order.RequestPackaging,
-            order.RequestInsurance,
-            order.RequestHomeDelivery,
-            order.Products.Count,
-            order.Products.Sum(p => p.Quantity)));
+        return new TrackingCodeLookupResult(true, null, items);
     }
 
     public async Task<TrackingCodeListResult> GetTrackingCodeListAsync(int page, int pageSize, int? status, string? search, CancellationToken cancellationToken = default)
@@ -1632,25 +1754,35 @@ public class MainOrderService : IMainOrderService
         return new TrackingCodeListResult(items, totalCount, page, pageSize);
     }
 
-    /// <summary>Code chưa có unique index ở DB — trả lỗi rõ ràng nếu lỡ có 2 kiện trùng mã (dữ liệu cũ/nhập tay sai) thay vì chọn đại 1 dòng.</summary>
-    private async Task<(TrackingCode? TrackingCode, string? Error)> FindSingleTrackingCodeByCodeAsync(string code, CancellationToken cancellationToken)
+    /// <summary>
+    /// Code chưa có unique index ở DB nên về lý thuyết có thể trùng trên nhiều đơn (nhập tay sai) — không
+    /// chặn lại/đoán bừa nữa: có <paramref name="id"/> (lấy từ bước tra cứu, staff đã chọn đúng đơn) thì
+    /// tìm chính xác theo Id; không có thì tra theo Code, lấy kiện tạo gần nhất (dùng cho request cũ chưa
+    /// gửi Id, hoặc trường hợp chỉ có đúng 1 kiện khớp Code).
+    /// </summary>
+    private async Task<(TrackingCode? TrackingCode, string? Error)> FindTrackingCodeAsync(Guid? id, string code, CancellationToken cancellationToken)
     {
+        if (id is { } trackingCodeId)
+        {
+            var byId = await _dbContext.TrackingCodes.FirstOrDefaultAsync(t => t.Id == trackingCodeId, cancellationToken);
+            return byId is null ? (null, $"Không tìm thấy mã vận đơn \"{code}\".") : (byId, null);
+        }
+
         if (code.Length == 0)
         {
             return (null, "Vui lòng quét hoặc nhập mã vận đơn.");
         }
 
-        var matches = await _dbContext.TrackingCodes.Where(t => t.Code == code).ToListAsync(cancellationToken);
-        if (matches.Count == 0)
+        var trackingCode = await _dbContext.TrackingCodes
+            .Where(t => t.Code == code)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (trackingCode is null)
         {
             return (null, $"Không tìm thấy mã vận đơn \"{code}\".");
         }
-        if (matches.Count > 1)
-        {
-            return (null, $"Mã vận đơn \"{code}\" bị trùng trên nhiều đơn, vui lòng liên hệ kỹ thuật.");
-        }
 
-        return (matches[0], null);
+        return (trackingCode, null);
     }
 
     /// <summary>
@@ -1700,6 +1832,25 @@ public class MainOrderService : IMainOrderService
         TrackingCodeStatus.DeliveredToCustomer => "Đã giao khách",
         _ => status.ToString(),
     };
+
+    /// <summary>Dùng ở 3 trang kiểm/xuất kho (TQ vào, TQ ra, VN vào) — so cân/kích thước trước và sau khi
+    /// nhập để ghi rõ vào Lịch sử thao tác, ví dụ cân từ 2 kg sang 2.5 kg. Trả về rỗng nếu không đổi gì.</summary>
+    private static List<string> BuildTrackingCodeMeasurementChanges(
+        TrackingCode trackingCode, decimal newWeightKg, decimal newLengthCm, decimal newWidthCm, decimal newHeightCm)
+    {
+        var changes = new List<string>();
+        if (trackingCode.WeightKg != newWeightKg)
+        {
+            changes.Add($"Cân nặng: {trackingCode.WeightKg:N2} kg → {newWeightKg:N2} kg");
+        }
+        if (trackingCode.LengthCm != newLengthCm || trackingCode.WidthCm != newWidthCm || trackingCode.HeightCm != newHeightCm)
+        {
+            changes.Add(
+                $"Kích thước: {trackingCode.LengthCm:N0}x{trackingCode.WidthCm:N0}x{trackingCode.HeightCm:N0} cm → "
+                + $"{newLengthCm:N0}x{newWidthCm:N0}x{newHeightCm:N0} cm");
+        }
+        return changes;
+    }
 
     /// <summary>So sánh danh sách sản phẩm cũ/mới theo vị trí (xem giải thích ở UpdateProductsAsync) — chỉ nêu
     /// ra dòng nào đổi Số lượng/Đơn giá; số dòng thêm/bớt khác nhau thì chỉ ghi chung chung, không suy diễn sai.
@@ -2052,6 +2203,7 @@ public class MainOrderService : IMainOrderService
                     h.Amount,
                     h.PerformedByUserId,
                     usernames.GetValueOrDefault(h.PerformedByUserId),
+                    userRoles.GetValueOrDefault(h.PerformedByUserId, -1),
                     h.PaidAtUtc))
                 .ToList(),
             shopCodes

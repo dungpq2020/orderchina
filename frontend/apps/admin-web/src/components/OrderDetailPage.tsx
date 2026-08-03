@@ -31,6 +31,7 @@ interface PaymentHistoryItem {
   amount: number;
   performedByUserId: string;
   performedByUsername: string | null;
+  performedByRole: number;
   paidAtUtc: string;
 }
 
@@ -361,6 +362,17 @@ function toInfoForm(order: OrderDetail): InfoForm {
   };
 }
 
+function buildFormSnapshot(order: OrderDetail) {
+  return {
+    productRows: toProductRows(order.products),
+    feesForm: toFeesForm(order),
+    infoForm: toInfoForm(order),
+    exchangeRateInput: String(order.exchangeRateApplied),
+    shopCodeRows: toShopCodeRows(order.shopCodes),
+    trackingCodeRows: toTrackingCodeRows(order.trackingCodes),
+  };
+}
+
 export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDetailPageProps) {
   const orderId = useSearchParams().get("id");
 
@@ -421,28 +433,58 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
 
   const seededRef = useRef(false);
   const seededRowVersionRef = useRef<string | null>(null);
+  const seededSnapshotRef = useRef<string>("");
+  const formSnapshotRef = useRef<string>("");
   const [conflictWarning, setConflictWarning] = useState(false);
+
+  function seedForms(order: OrderDetail) {
+    const snapshot = buildFormSnapshot(order);
+    setProductRows(snapshot.productRows);
+    setFeesForm(snapshot.feesForm);
+    setInfoForm(snapshot.infoForm);
+    setExchangeRateInput(snapshot.exchangeRateInput);
+    setShopCodeRows(snapshot.shopCodeRows);
+    setTrackingCodeRows(snapshot.trackingCodeRows);
+    const serialized = JSON.stringify(snapshot);
+    seededSnapshotRef.current = serialized;
+    formSnapshotRef.current = serialized;
+  }
 
   useEffect(() => {
     if (state.status !== "ready" || seededRef.current) return;
     seededRef.current = true;
     seededRowVersionRef.current = state.data.rowVersion;
-    setProductRows(toProductRows(state.data.products));
-    setFeesForm(toFeesForm(state.data));
-    setInfoForm(toInfoForm(state.data));
-    setExchangeRateInput(String(state.data.exchangeRateApplied));
-    setShopCodeRows(toShopCodeRows(state.data.shopCodes));
-    setTrackingCodeRows(toTrackingCodeRows(state.data.trackingCodes));
+    seedForms(state.data);
   }, [state]);
 
-  // Trang tự tải lại đơn ngầm khi quay lại tab (useAuthenticatedList) — nếu rowVersion đổi so với lúc
-  // seed form nghĩa là có người khác (khách hàng đặt cọc, staff khác...) vừa sửa đơn, cảnh báo trước khi
-  // staff bấm Cập nhật để tránh phải chờ tới lúc backend từ chối do concurrency mới biết.
+  // Theo dõi form hiện tại (sau mỗi render) để so với snapshot lúc seed — biết được staff đã gõ dở gì
+  // chưa, phục vụ effect bên dưới quyết định tự nạp lại data mới hay phải cảnh báo trước.
+  useEffect(() => {
+    formSnapshotRef.current = JSON.stringify({
+      productRows,
+      feesForm,
+      infoForm,
+      exchangeRateInput,
+      shopCodeRows,
+      trackingCodeRows,
+    });
+  });
+
+  // Trang tự tải lại đơn ngầm khi quay lại tab (useAuthenticatedList). Nếu rowVersion đổi so với lúc
+  // seed form: form chưa bị sửa gì (không dirty) thì âm thầm nạp data mới nhất luôn cho khỏi phải bấm
+  // tải lại; còn nếu staff đang gõ dở thì giữ nguyên và cảnh báo trước khi bấm Cập nhật, tránh bị
+  // backend từ chối do concurrency hoặc ghi đè mất bản người khác vừa sửa.
   useEffect(() => {
     if (state.status !== "ready" || !seededRef.current) return;
-    if (seededRowVersionRef.current && state.data.rowVersion !== seededRowVersionRef.current) {
+    if (!seededRowVersionRef.current || state.data.rowVersion === seededRowVersionRef.current) return;
+
+    if (formSnapshotRef.current !== seededSnapshotRef.current) {
       setConflictWarning(true);
+      return;
     }
+
+    seededRowVersionRef.current = state.data.rowVersion;
+    seedForms(state.data);
   }, [state]);
 
   useEffect(() => {
@@ -474,13 +516,8 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
 
   function applyUpdatedOrder(order: OrderDetail, accessToken: string) {
     setState({ status: "ready", data: order, accessToken });
-    setProductRows(toProductRows(order.products));
-    setFeesForm(toFeesForm(order));
-    setInfoForm(toInfoForm(order));
-    setExchangeRateInput(String(order.exchangeRateApplied));
-    setShopCodeRows(toShopCodeRows(order.shopCodes));
-    setTrackingCodeRows(toTrackingCodeRows(order.trackingCodes));
     seededRowVersionRef.current = order.rowVersion;
+    seedForms(order);
     setConflictWarning(false);
   }
 
@@ -837,23 +874,13 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
         </div>
       )}
 
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <Link href="/orders" className="text-sm text-blue-600 hover:underline">
-            ← Quay lại danh sách
-          </Link>
-          <h1 className="mt-1 text-xl font-semibold text-zinc-900">
-            Đơn {order.orderCode} — <span className="text-red-600">{order.username}</span>
-          </h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          title="Trang không tự động realtime — bấm để tải lại dữ liệu mới nhất (VD: sau khi kiểm/xuất kho ở trang khác)"
-          className="mt-1 shrink-0 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
-        >
-          🔄 Làm mới
-        </button>
+      <div className="mb-6">
+        <Link href="/orders" className="text-sm text-blue-600 hover:underline">
+          ← Quay lại danh sách
+        </Link>
+        <h1 className="mt-1 text-xl font-semibold text-zinc-900">
+          Đơn {order.orderCode} — <span className="text-red-600">{order.username}</span>
+        </h1>
       </div>
 
       {toast && (
@@ -1601,6 +1628,7 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                   <th className="px-4 py-2">Phương thức</th>
                   <th className="px-4 py-2">Số tiền</th>
                   <th className="px-4 py-2">Người thực hiện</th>
+                  <th className="px-4 py-2">Quyền hạn</th>
                 </tr>
               </thead>
               <tbody>
@@ -1616,6 +1644,7 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                       {formatMoney(h.amount)} đ
                     </td>
                     <td className="px-4 py-2.5 text-zinc-700">{h.performedByUsername ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-zinc-700">{h.performedByRole >= 0 ? roleLabel(h.performedByRole) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

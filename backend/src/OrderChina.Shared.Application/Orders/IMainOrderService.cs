@@ -8,7 +8,12 @@ public interface IMainOrderService
 
     Task<CreateMainOrderResult> CreateAsync(CreateMainOrderRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
 
-    Task<MainOrderListResult> GetListAsync(int page, int pageSize, CancellationToken cancellationToken = default);
+    /// <summary>Trang "Đơn hàng mua hộ" (admin) — lọc theo trạng thái/NV đặt hàng/NV kinh doanh/khoảng ngày
+    /// tạo đơn, tìm theo mã đơn, tài khoản, SĐT, mã vận đơn hoặc mã shop trong 1 ô search.</summary>
+    Task<MainOrderListResult> GetListAsync(
+        int page, int pageSize, int? status = null, string? search = null,
+        Guid? orderStaffId = null, Guid? salesStaffId = null,
+        DateTime? fromDate = null, DateTime? toDate = null, CancellationToken cancellationToken = default);
 
     /// <summary>Trang "Đơn hàng" của customer-web — chỉ trả về đơn của chính khách hàng đó.</summary>
     Task<MainOrderListResult> GetCustomerOrdersAsync(Guid userId, int page, int pageSize, CancellationToken cancellationToken = default);

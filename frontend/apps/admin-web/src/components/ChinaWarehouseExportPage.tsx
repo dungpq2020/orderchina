@@ -46,6 +46,7 @@ const TRACKING_CODE_STATUS_COLORS: Record<number, string> = {
 const ARRIVED_CHINA_WAREHOUSE_STATUS = 2;
 
 interface LookupData {
+  id: string;
   code: string;
   status: number;
   weightKg: number;
@@ -146,13 +147,6 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
     if (trimmed === "" || scanning) return;
     setScanCode("");
 
-    const existing = rowsRef.current.find((r) => r.code.toLowerCase() === trimmed.toLowerCase());
-    if (existing) {
-      document.getElementById(`row-${existing.key}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-      scanInputRef.current?.focus();
-      return;
-    }
-
     setScanning(true);
     try {
       const res = await fetch(`${adminApiBaseUrl}/main-orders/tracking-codes/${encodeURIComponent(trimmed)}`, {
@@ -163,8 +157,29 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
         setToast({ message: body?.error ?? `Không tra được mã (status ${res.status}).`, type: "error" });
         return;
       }
-      const data = (await res.json()) as LookupData;
-      const newRow: ScanRow = {
+      const items = (await res.json()) as LookupData[];
+
+      // Kiện đã qua trạng thái khác (chưa kiểm hàng TQ / đã xuất kho / đã về VN...) thì bỏ hẳn, không
+      // hiện dòng disable.
+      const eligible = items.filter((item) => item.status === ARRIVED_CHINA_WAREHOUSE_STATUS);
+      if (eligible.length === 0) {
+        setToast({ message: `Mã "${trimmed}" chưa kiểm hàng kho TQ hoặc đã xuất kho, không thể xuất kho.`, type: "error" });
+        return;
+      }
+
+      // Mã có thể trùng trên nhiều đơn (chưa có ràng buộc duy nhất ở DB) — hiện MỖI kiện thành 1 dòng
+      // riêng để staff tự chọn đúng đơn. Kiện nào đã có sẵn trong danh sách (theo Id, không phải Code) thì
+      // bỏ qua, không thêm trùng — chỉ coi là "đã quét" khi chính kiện đó (đúng đơn) đã có trong danh sách.
+      const newItems = eligible.filter((item) => !rowsRef.current.some((r) => r.data.id === item.id));
+      if (newItems.length === 0) {
+        const firstExisting = rowsRef.current.find((r) => eligible.some((item) => item.id === r.data.id));
+        if (firstExisting) {
+          document.getElementById(`row-${firstExisting.key}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+
+      const newRows: ScanRow[] = newItems.map((data) => ({
         key: crypto.randomUUID(),
         code: trimmed,
         data,
@@ -176,8 +191,8 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
         saving: false,
         saveError: null,
         savedAtLocal: null,
-      };
-      setRows((prev) => [newRow, ...prev]);
+      }));
+      setRows((prev) => [...newRows, ...prev]);
     } catch {
       setToast({ message: "Không kết nối được tới máy chủ.", type: "error" });
     } finally {
@@ -199,6 +214,7 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
+          id: row.data.id,
           code: row.code,
           weightKg: numOrZero(row.weightKg),
           lengthCm: numOrZero(row.lengthCm),
@@ -228,11 +244,21 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
   async function saveAll(accessToken: string) {
     // Lưu tuần tự (không Promise.all) — nhiều mã có thể cùng thuộc 1 đơn, lưu song song dễ đụng
     // concurrency conflict (xmin) trên MainOrder do 2 request cùng sửa 1 đơn gần như đồng thời.
+    let savedCount = 0;
     for (const row of rowsRef.current) {
-      if (row.saving || row.data.status !== ARRIVED_CHINA_WAREHOUSE_STATUS || numOrZero(row.weightKg) <= 0) continue;
+      if (row.saving || row.data.status !== ARRIVED_CHINA_WAREHOUSE_STATUS) continue;
+      if (numOrZero(row.weightKg) <= 0) {
+        updateRow(row.key, { saveError: "Vui lòng nhập cân nặng." });
+        continue;
+      }
       await saveRow(row, accessToken);
+      savedCount++;
     }
-    setToast({ message: "Đã xuất kho tất cả", type: "success" });
+    setToast(
+      savedCount > 0
+        ? { message: `Đã xuất kho ${savedCount} kiện`, type: "success" }
+        : { message: "Chưa có kiện nào đủ thông tin để xuất kho.", type: "error" },
+    );
   }
 
   function hideRow(key: string) {
@@ -340,7 +366,7 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
                       ? (numOrZero(row.lengthCm) * numOrZero(row.widthCm) * numOrZero(row.heightCm)) /
                         config.volumetricWeightDivisor
                       : 0;
-                  const blocked = row.data.status !== ARRIVED_CHINA_WAREHOUSE_STATUS;
+                  const blocked = Boolean(row.savedAtLocal && !row.saveError);
 
                   return (
                     <tr
@@ -468,11 +494,6 @@ export default function ChinaWarehouseExportPage({ adminApiBaseUrl, loginUrl }: 
                           >
                             Ẩn đi
                           </button>
-                          {blocked && (
-                            <div className="text-xs text-red-600">
-                              {row.data.status === 1 ? "Chưa kiểm hàng kho TQ." : "Không thể xuất kho."}
-                            </div>
-                          )}
                           {row.saveError && <div className="text-xs text-red-600">{row.saveError}</div>}
                           {row.savedAtLocal && !row.saveError && (
                             <div className="text-xs text-green-600">Đã xuất kho {formatDateTime(row.savedAtLocal)}</div>

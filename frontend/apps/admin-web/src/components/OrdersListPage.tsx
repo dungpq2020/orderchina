@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
@@ -85,6 +85,17 @@ const STATUS_LABELS: Record<number, string> = {
   13: "Đã huỷ",
 };
 
+interface Filters {
+  keyword: string;
+  status: string;
+  orderStaffId: string;
+  salesStaffId: string;
+  fromDate: string;
+  toDate: string;
+}
+
+const EMPTY_FILTERS: Filters = { keyword: "", status: "", orderStaffId: "", salesStaffId: "", fromDate: "", toDate: "" };
+
 function detectPlatformBadge(link: string | null): string | null {
   if (!link) return null;
   try {
@@ -104,6 +115,8 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
   const [savingStaffOrderId, setSavingStaffOrderId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const isFirstFilterRun = useRef(true);
 
   useEffect(() => {
     if (!toast) return;
@@ -113,7 +126,15 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
 
   const fetchOrders = useCallback(
     async (targetPage: number, accessToken: string): Promise<MainOrderListResult> => {
-      const res = await fetch(`${adminApiBaseUrl}/main-orders?page=${targetPage}&pageSize=${PAGE_SIZE}`, {
+      const params = new URLSearchParams({ page: String(targetPage), pageSize: String(PAGE_SIZE) });
+      if (filters.keyword.trim()) params.set("search", filters.keyword.trim());
+      if (filters.status) params.set("status", filters.status);
+      if (filters.orderStaffId) params.set("orderStaffId", filters.orderStaffId);
+      if (filters.salesStaffId) params.set("salesStaffId", filters.salesStaffId);
+      if (filters.fromDate) params.set("fromDate", filters.fromDate);
+      if (filters.toDate) params.set("toDate", filters.toDate);
+
+      const res = await fetch(`${adminApiBaseUrl}/main-orders?${params.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -123,7 +144,7 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
 
       return (await res.json()) as MainOrderListResult;
     },
-    [adminApiBaseUrl],
+    [adminApiBaseUrl, filters],
   );
 
   const { state, page, goToPage, logout, setState } = useAuthenticatedList<MainOrderListResult>({
@@ -131,6 +152,17 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
     loginUrl,
     fetchPage: fetchOrders,
   });
+
+  useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
+    if (state.status !== "ready") return;
+    const timer = setTimeout(() => goToPage(1), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   useEffect(() => {
     if (state.status !== "ready") return;
@@ -231,6 +263,101 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
         </Link>
       </div>
 
+      <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Từ khoá</label>
+            <input
+              type="text"
+              value={filters.keyword}
+              onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+              placeholder="Mã đơn, tài khoản, SĐT, mã vận đơn, mã shop..."
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Trạng thái</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">NV đặt hàng</label>
+            <select
+              value={filters.orderStaffId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, orderStaffId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {orderStaffOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.username}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">NV kinh doanh</label>
+            <select
+              value={filters.salesStaffId}
+              onChange={(e) => setFilters((prev) => ({ ...prev, salesStaffId: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="">Tất cả</option>
+              {salesStaffOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.username}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Từ ngày</label>
+            <input
+              type="date"
+              value={filters.fromDate}
+              onChange={(e) => setFilters((prev) => ({ ...prev, fromDate: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-zinc-500">Đến ngày</label>
+            <input
+              type="date"
+              value={filters.toDate}
+              onChange={(e) => setFilters((prev) => ({ ...prev, toDate: e.target.value }))}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {Object.values(filters).some((v) => v !== "") && (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setFilters(EMPTY_FILTERS)}
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:bg-zinc-50"
+            >
+              Xoá bộ lọc
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-zinc-200 bg-orange-400 text-white font-semibold">
@@ -261,6 +388,7 @@ export default function OrdersListPage({ adminApiBaseUrl, loginUrl }: OrdersList
                     <Link href={`/orderdetail?id=${o.id}`} className="hover:underline">
                       {o.orderCode}
                     </Link>
+                    <div className="mt-1 text-xs font-normal text-zinc-400">{formatDateTime(o.createdAtUtc)}</div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="font-semibold text-red-600">{o.username}</div>
