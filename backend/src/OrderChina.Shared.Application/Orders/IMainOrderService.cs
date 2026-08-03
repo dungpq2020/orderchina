@@ -20,6 +20,12 @@ public interface IMainOrderService
     Task<MainOrderDepositResult> DepositAsync(Guid orderId, Guid customerUserId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Trang chi tiết đơn (admin) — staff đặt cọc hộ khách khi khách trả tiền ngoài hệ thống (chuyển
+    /// khoản/tiền mặt), vẫn trừ đúng ví của khách sở hữu đơn, không phải ví admin.
+    /// </summary>
+    Task<MainOrderDepositResult> AdminDepositAsync(Guid orderId, Guid actingUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Khách tự huỷ đơn của mình — chỉ cho phép khi đơn chưa đặt cọc (AwaitingQuote/AwaitingDeposit), vì
     /// từ Deposited trở đi khách đã trả tiền thật (cần staff xử lý hoàn tiền, không tự huỷ được).
     /// </summary>
@@ -30,6 +36,9 @@ public interface IMainOrderService
     /// WalletBalance, chỉ cho phép khi đơn đã Về kho Việt Nam (ArrivedVietnamWarehouse).
     /// </summary>
     Task<MainOrderPayResult> PayAsync(Guid orderId, Guid customerUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Trang chi tiết đơn (admin) — staff thanh toán hộ khách, cùng lý do với <see cref="AdminDepositAsync"/>.</summary>
+    Task<MainOrderPayResult> AdminPayAsync(Guid orderId, Guid actingUserId, CancellationToken cancellationToken = default);
 
     Task<UpdateMainOrderStaffResult> UpdateStaffAsync(Guid orderId, UpdateMainOrderStaffRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
 
@@ -50,4 +59,28 @@ public interface IMainOrderService
 
     /// <summary>Thay toàn bộ danh sách mã vận đơn của đơn (giống UpdateProductsAsync — replace-all theo 1 lần Lưu).</summary>
     Task<UpdateMainOrderResult> UpdateTrackingCodesAsync(Guid orderId, UpdateMainOrderTrackingCodesRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Trang "Kiểm hàng kho Trung Quốc" — quét/nhập mã vận đơn (không biết trước orderId), nhập cân nặng +
+    /// kích thước, hệ thống tự tra ra đơn qua Code rồi cập nhật cả kiện hàng lẫn đơn hàng trong 1 request.
+    /// </summary>
+    Task<UpdateMainOrderResult> CheckInTrackingCodeChinaWarehouseAsync(CheckInTrackingCodeChinaWarehouseRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Trang "Xuất kho Trung Quốc" — quét mã vận đơn đã kiểm hàng (ArrivedChinaWarehouse) để xác nhận rời
+    /// kho TQ, chuyển sang InTransitToVietnam (cả kiện lẫn đơn hàng) — không sửa cân/kích thước.
+    /// </summary>
+    Task<UpdateMainOrderResult> ExportTrackingCodeChinaWarehouseAsync(ExportTrackingCodeChinaWarehouseRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Trang "Kiểm kho Việt Nam" — quét mã vận đơn đã xuất kho TQ (InTransitToVietnam) để xác nhận về tới
+    /// kho VN, chuyển sang ArrivedVietnamWarehouse (cả kiện lẫn đơn hàng).
+    /// </summary>
+    Task<UpdateMainOrderResult> CheckInTrackingCodeVietnamWarehouseAsync(CheckInTrackingCodeVietnamWarehouseRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Tra cứu thuần theo mã vận đơn (không sửa dữ liệu) — dùng ngay sau khi quét để hiển thị ngữ cảnh đơn hàng.</summary>
+    Task<TrackingCodeLookupResult> LookupTrackingCodeForChinaWarehouseAsync(string code, CancellationToken cancellationToken = default);
+
+    /// <summary>Trang "Quản lý kiện hàng" — danh sách mã vận đơn của mọi đơn, lọc theo trạng thái + tìm theo mã vận đơn/mã đơn/username.</summary>
+    Task<TrackingCodeListResult> GetTrackingCodeListAsync(int page, int pageSize, int? status, string? search, CancellationToken cancellationToken = default);
 }

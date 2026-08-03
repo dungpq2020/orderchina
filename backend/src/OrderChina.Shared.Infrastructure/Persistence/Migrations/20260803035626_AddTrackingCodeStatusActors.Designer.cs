@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderChina.Shared.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OrderChina.Shared.Infrastructure.Persistence;
 namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803035626_AddTrackingCodeStatusActors")]
+    partial class AddTrackingCodeStatusActors
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1211,40 +1214,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_main_orders_user_id");
 
                     b.ToTable("main_orders", (string)null);
-                });
-
-            modelBuilder.Entity("OrderChina.Shared.Domain.Orders.MainOrderActivityLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<Guid>("MainOrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("main_order_id");
-
-                    b.Property<DateTime>("PerformedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("performed_at_utc");
-
-                    b.Property<Guid>("PerformedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("performed_by_user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_main_order_activity_logs");
-
-                    b.HasIndex("MainOrderId")
-                        .HasDatabaseName("ix_main_order_activity_logs_main_order_id");
-
-                    b.ToTable("main_order_activity_logs", (string)null);
                 });
 
             modelBuilder.Entity("OrderChina.Shared.Domain.Orders.MainOrderPaymentHistory", b =>

@@ -116,6 +116,34 @@ public class MainOrdersController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Staff đặt cọc hộ khách (khách trả tiền ngoài hệ thống) — trả về nguyên đơn hàng đầy đủ giống các API cập nhật khác, để FE refresh 1 lần.</summary>
+    [HttpPost("{id:guid}/deposit")]
+    public async Task<IActionResult> Deposit(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.AdminDepositAsync(id, GetCurrentUserId(), cancellationToken);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        var detail = await _mainOrderService.GetByIdAsync(id, cancellationToken);
+        return Ok(detail.Order);
+    }
+
+    /// <summary>Staff thanh toán hộ khách — cùng lý do với Deposit ở trên.</summary>
+    [HttpPost("{id:guid}/pay")]
+    public async Task<IActionResult> Pay(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.AdminPayAsync(id, GetCurrentUserId(), cancellationToken);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { error = result.Error });
+        }
+
+        var detail = await _mainOrderService.GetByIdAsync(id, cancellationToken);
+        return Ok(detail.Order);
+    }
+
     [HttpPut("{id:guid}/shop-codes")]
     public async Task<IActionResult> UpdateShopCodes(Guid id, [FromBody] UpdateMainOrderShopCodesRequest request, CancellationToken cancellationToken)
     {
@@ -128,6 +156,56 @@ public class MainOrdersController : ControllerBase
     {
         var result = await _mainOrderService.UpdateTrackingCodesAsync(id, request, GetCurrentUserId(), cancellationToken);
         return ToActionResult(result);
+    }
+
+    /// <summary>Trang "Kiểm hàng kho Trung Quốc" — quét mã vận đơn, hệ thống tự tra ra đơn tương ứng.</summary>
+    [HttpPost("tracking-codes/check-in-china-warehouse")]
+    public async Task<IActionResult> CheckInTrackingCodeChinaWarehouse([FromBody] CheckInTrackingCodeChinaWarehouseRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.CheckInTrackingCodeChinaWarehouseAsync(request, GetCurrentUserId(), cancellationToken);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Trang "Xuất kho Trung Quốc" — quét mã vận đơn đã kiểm hàng để xác nhận rời kho TQ.</summary>
+    [HttpPost("tracking-codes/export-china-warehouse")]
+    public async Task<IActionResult> ExportTrackingCodeChinaWarehouse([FromBody] ExportTrackingCodeChinaWarehouseRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.ExportTrackingCodeChinaWarehouseAsync(request, GetCurrentUserId(), cancellationToken);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Trang "Kiểm kho Việt Nam" — quét mã vận đơn đã xuất kho TQ để xác nhận về tới kho VN.</summary>
+    [HttpPost("tracking-codes/check-in-vietnam-warehouse")]
+    public async Task<IActionResult> CheckInTrackingCodeVietnamWarehouse([FromBody] CheckInTrackingCodeVietnamWarehouseRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.CheckInTrackingCodeVietnamWarehouseAsync(request, GetCurrentUserId(), cancellationToken);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Trang "Quản lý kiện hàng" — danh sách mã vận đơn của mọi đơn, lọc theo trạng thái + tìm kiếm.</summary>
+    [HttpGet("tracking-codes")]
+    public async Task<IActionResult> GetTrackingCodeList(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? status = null,
+        [FromQuery] string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mainOrderService.GetTrackingCodeListAsync(page, pageSize, status, search, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Tra cứu thuần theo mã vận đơn ngay sau khi quét — hiển thị ngữ cảnh đơn hàng trước khi Cập nhật.</summary>
+    [HttpGet("tracking-codes/{code}")]
+    public async Task<IActionResult> LookupTrackingCodeChinaWarehouse(string code, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.LookupTrackingCodeForChinaWarehouseAsync(code, cancellationToken);
+        if (!result.Succeeded)
+        {
+            return NotFound(new { error = result.Error });
+        }
+
+        return Ok(result.Data);
     }
 
     private Guid GetCurrentUserId()

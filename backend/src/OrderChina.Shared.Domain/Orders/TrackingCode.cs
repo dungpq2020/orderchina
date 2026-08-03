@@ -36,14 +36,24 @@ public class TrackingCode
     public TrackingCodeStatus Status { get; set; } = TrackingCodeStatus.New;
 
     // Mốc thời gian lần đầu đạt mỗi trạng thái — cùng cách làm với MainOrder.*AtUtc. New dùng luôn
-    // CreatedAtUtc (giống MainOrderStatus.AwaitingQuote), không cần cột riêng.
+    // CreatedAtUtc (giống MainOrderStatus.AwaitingQuote), không cần cột riêng. Mỗi mốc *AtUtc đi kèm
+    // 1 cột *ByUserId — nhân viên kho đã thao tác đổi sang trạng thái đó (kiểm hàng kho TQ, xuất kho TQ,
+    // nhập kho VN, giao khách...), không dùng chung 1 cột UpdatedByUserId vì mỗi khâu kho là 1 nhân viên khác nhau.
     public DateTime? ArrivedChinaWarehouseAtUtc { get; set; }
+
+    public Guid? ArrivedChinaWarehouseByUserId { get; set; }
 
     public DateTime? InTransitToVietnamAtUtc { get; set; }
 
+    public Guid? InTransitToVietnamByUserId { get; set; }
+
     public DateTime? ArrivedVietnamWarehouseAtUtc { get; set; }
 
+    public Guid? ArrivedVietnamWarehouseByUserId { get; set; }
+
     public DateTime? DeliveredToCustomerAtUtc { get; set; }
+
+    public Guid? DeliveredToCustomerByUserId { get; set; }
 
     public string? Note { get; set; }
 

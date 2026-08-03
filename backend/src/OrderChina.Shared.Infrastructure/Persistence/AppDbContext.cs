@@ -42,6 +42,7 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>, IDataPro
     public DbSet<MainOrder> MainOrders => Set<MainOrder>();
     public DbSet<MainOrderProduct> MainOrderProducts => Set<MainOrderProduct>();
     public DbSet<MainOrderPaymentHistory> MainOrderPaymentHistories => Set<MainOrderPaymentHistory>();
+    public DbSet<MainOrderActivityLog> MainOrderActivityLogs => Set<MainOrderActivityLog>();
     public DbSet<MainOrderShopCode> MainOrderShopCodes => Set<MainOrderShopCode>();
     public DbSet<TrackingCode> TrackingCodes => Set<TrackingCode>();
 

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import AdminLayout from "./AdminLayout";
+import { roleLabel } from "./StaffListPage";
 import { formatDateTime } from "@orderchina/ui/utils/formatDateTime";
 
 interface OrderDetailPageProps {
@@ -31,6 +32,15 @@ interface PaymentHistoryItem {
   performedByUserId: string;
   performedByUsername: string | null;
   paidAtUtc: string;
+}
+
+interface ActivityLogItem {
+  id: string;
+  description: string;
+  performedByUserId: string;
+  performedByUsername: string | null;
+  performedByRole: number;
+  performedAtUtc: string;
 }
 
 interface ShopCodeItem {
@@ -104,6 +114,7 @@ interface OrderDetail {
   paymentHistories: PaymentHistoryItem[];
   shopCodes: ShopCodeItem[];
   trackingCodes: TrackingCodeItem[];
+  activityLogs: ActivityLogItem[];
   /** Concurrency token (xmin) — gửi lại nguyên giá trị này ở mỗi request cập nhật để backend phát hiện
    * đơn đã bị người khác (staff khác, hoặc khách hàng tự đặt cọc/thanh toán) sửa từ lúc trang này tải dữ liệu. */
   rowVersion: string;
@@ -354,6 +365,7 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
   const orderId = useSearchParams().get("id");
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [confirmOutOfStockKey, setConfirmOutOfStockKey] = useState<string | null>(null);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 2500);
@@ -391,6 +403,9 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
   const [savingProducts, setSavingProducts] = useState(false);
   const [savingExchangeRate, setSavingExchangeRate] = useState(false);
   const [savingInfo, setSavingInfo] = useState(false);
+  const [savingDeposit, setSavingDeposit] = useState(false);
+  const [savingPay, setSavingPay] = useState(false);
+  const [confirmDepositOrPay, setConfirmDepositOrPay] = useState<"deposit" | "pay" | null>(null);
 
   const [shopCodeRows, setShopCodeRows] = useState<ShopCodeRow[]>([]);
   const [savingShopCodes, setSavingShopCodes] = useState(false);
@@ -398,7 +413,6 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
   const [trackingCodesOpen, setTrackingCodesOpen] = useState(true);
   const [trackingCodeRows, setTrackingCodeRows] = useState<TrackingCodeRow[]>([]);
   const [savingTrackingCodes, setSavingTrackingCodes] = useState(false);
-  const [allTrackingCodesReady, setAllTrackingCodesReady] = useState(false);
 
   const [chinaWarehouses, setChinaWarehouses] = useState<OptionItem[]>([]);
   const [vietnamWarehouses, setVietnamWarehouses] = useState<OptionItem[]>([]);
@@ -734,6 +748,56 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
     }
   }
 
+  async function handleDeposit(accessToken: string) {
+    if (!orderId) return;
+    setError(null);
+    setSavingDeposit(true);
+    try {
+      const res = await fetch(`${adminApiBaseUrl}/main-orders/${orderId}/deposit`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? "Đặt cọc thất bại.");
+        return;
+      }
+      const updated = (await res.json()) as OrderDetail;
+      applyUpdatedOrder(updated, accessToken);
+      setToast({ message: "Đã đặt cọc hộ khách", type: "success" });
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setSavingDeposit(false);
+      setConfirmDepositOrPay(null);
+    }
+  }
+
+  async function handlePay(accessToken: string) {
+    if (!orderId) return;
+    setError(null);
+    setSavingPay(true);
+    try {
+      const res = await fetch(`${adminApiBaseUrl}/main-orders/${orderId}/pay`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? "Thanh toán thất bại.");
+        return;
+      }
+      const updated = (await res.json()) as OrderDetail;
+      applyUpdatedOrder(updated, accessToken);
+      setToast({ message: "Đã thanh toán hộ khách", type: "success" });
+    } catch {
+      setError("Không kết nối được tới máy chủ.");
+    } finally {
+      setSavingPay(false);
+      setConfirmDepositOrPay(null);
+    }
+  }
+
   if (state.status === "loading" || state.status === "unauthenticated") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
@@ -773,13 +837,23 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
         </div>
       )}
 
-      <div className="mb-6">
-        <Link href="/orders" className="text-sm text-blue-600 hover:underline">
-          ← Quay lại danh sách
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold text-zinc-900">
-          Đơn {order.orderCode} — <span className="text-red-600">{order.username}</span>
-        </h1>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <Link href="/orders" className="text-sm text-blue-600 hover:underline">
+            ← Quay lại danh sách
+          </Link>
+          <h1 className="mt-1 text-xl font-semibold text-zinc-900">
+            Đơn {order.orderCode} — <span className="text-red-600">{order.username}</span>
+          </h1>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          title="Trang không tự động realtime — bấm để tải lại dữ liệu mới nhất (VD: sau khi kiểm/xuất kho ở trang khác)"
+          className="mt-1 shrink-0 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+        >
+          🔄 Làm mới
+        </button>
       </div>
 
       {toast && (
@@ -884,26 +958,48 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                     ))}
                   </select>
                 </div>
-                <button
-                  onClick={() => handleUpdateInfo(accessToken)}
-                  disabled={savingInfo}
-                  className="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {savingInfo ? "Đang cập nhật..." : "✎ Cập nhật"}
-                </button>
+                <div>
+                  <div className="text-sm font-medium text-zinc-700">Ghi chú đơn</div>
+                  <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-600">{order.note || "—"}</div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleUpdateInfo(accessToken)}
+                    disabled={savingInfo}
+                    className="flex-1 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {savingInfo ? "Đang cập nhật..." : "✎ Cập nhật"}
+                  </button>
+                  {infoForm.status === "2" && (
+                    <button
+                      onClick={() => setConfirmDepositOrPay("deposit")}
+                      className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      💳 Đặt cọc
+                    </button>
+                  )}
+                  {infoForm.status === "9" && (
+                    <button
+                      onClick={() => setConfirmDepositOrPay("pay")}
+                      className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                    >
+                      💳 Thanh toán
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </aside>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
           <h2 className="font-semibold">Danh sách sản phẩm ({productRows.length})</h2>
           <div className="flex gap-2">
             <button
               onClick={addRow}
-              className="rounded-lg bg-orange-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600"
+              className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-orange-600 hover:bg-orange-50"
             >
               + Thêm
             </button>
@@ -1007,8 +1103,14 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                     type="text"
                     placeholder="Ghi chú"
                     value={row.note}
+                    readOnly={row.locked}
                     onChange={(e) => updateRow(row.key, { note: e.target.value })}
-                    className="rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                    title={row.locked ? "Khoá để mua đúng thông tin khách đã đặt" : undefined}
+                    className={`rounded-lg border px-2.5 py-1.5 text-sm ${
+                      row.locked
+                        ? "cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-500"
+                        : "border-zinc-300 focus:border-blue-500 focus:outline-none"
+                    }`}
                   />
                 </div>
 
@@ -1050,11 +1152,10 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                 {row.locked ? (
                   <button
                     onClick={() => {
-                      if (
-                        row.outOfStock ||
-                        window.confirm(`Đánh dấu "${row.productName || "sản phẩm này"}" hết hàng — số lượng sẽ về 0 và trừ khỏi tổng tiền đơn?`)
-                      ) {
+                      if (row.outOfStock) {
                         toggleOutOfStock(row.key);
+                      } else {
+                        setConfirmOutOfStockKey(row.key);
                       }
                     }}
                     className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-white ${
@@ -1163,6 +1264,7 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                   <th className="px-3 py-2.5">Cân nặng</th>
                   <th className="px-3 py-2.5">Cân quy đổi</th>
                   <th className="px-3 py-2.5">Kích thước</th>
+                  <th className="px-3 py-2.5">Ghi chú</th>
                   <th className="px-3 py-2.5">Trạng thái</th>
                   <th className="px-3 py-2.5">Thao tác</th>
                 </tr>
@@ -1170,7 +1272,7 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
               <tbody className="divide-y divide-zinc-100">
                 {trackingCodeRows.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-zinc-400">
+                    <td colSpan={7} className="px-3 py-6 text-center text-zinc-400">
                       Chưa có mã vận đơn nào.
                     </td>
                   </tr>
@@ -1195,9 +1297,10 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                             type="number"
                             min={0}
                             step="any"
+                            disabled
+                            title="Chỉ nhập được ở trang Kiểm hàng kho Trung Quốc"
                             value={row.weightKg}
-                            onChange={(e) => updateTrackingCodeRow(row.key, { weightKg: e.target.value })}
-                            className="w-20 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                            className="w-20 rounded-lg border border-zinc-300 bg-zinc-100 px-2 py-1.5 text-sm text-zinc-500"
                           />
                           <span className="text-xs text-zinc-500">Kg</span>
                         </div>
@@ -1208,37 +1311,45 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
                         </div>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1" title="Chỉ nhập được ở trang Kiểm hàng kho Trung Quốc">
                           <input
                             type="number"
                             min={0}
                             step="any"
+                            disabled
                             placeholder="Dài"
                             value={row.lengthCm}
-                            onChange={(e) => updateTrackingCodeRow(row.key, { lengthCm: e.target.value })}
-                            className="w-14 rounded-lg border border-zinc-300 px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                            className="w-14 rounded-lg border border-zinc-300 bg-zinc-100 px-1.5 py-1.5 text-xs text-zinc-500"
                           />
                           <span className="text-xs text-zinc-400">x</span>
                           <input
                             type="number"
                             min={0}
                             step="any"
+                            disabled
                             placeholder="Rộng"
                             value={row.widthCm}
-                            onChange={(e) => updateTrackingCodeRow(row.key, { widthCm: e.target.value })}
-                            className="w-14 rounded-lg border border-zinc-300 px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                            className="w-14 rounded-lg border border-zinc-300 bg-zinc-100 px-1.5 py-1.5 text-xs text-zinc-500"
                           />
                           <span className="text-xs text-zinc-400">x</span>
                           <input
                             type="number"
                             min={0}
                             step="any"
+                            disabled
                             placeholder="Cao"
                             value={row.heightCm}
-                            onChange={(e) => updateTrackingCodeRow(row.key, { heightCm: e.target.value })}
-                            className="w-14 rounded-lg border border-zinc-300 px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                            className="w-14 rounded-lg border border-zinc-300 bg-zinc-100 px-1.5 py-1.5 text-xs text-zinc-500"
                           />
                         </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={row.note}
+                          onChange={(e) => updateTrackingCodeRow(row.key, { note: e.target.value })}
+                          className="w-32 rounded-lg border border-zinc-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                        />
                       </td>
                       <td className="px-3 py-2">
                         <select
@@ -1286,15 +1397,6 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
               >
                 {savingTrackingCodes ? "Đang lưu..." : "Lưu mã vận đơn"}
               </button>
-              <label className="flex items-center gap-1.5 text-sm text-zinc-600">
-                <input
-                  type="checkbox"
-                  checked={allTrackingCodesReady}
-                  onChange={(e) => setAllTrackingCodesReady(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-300"
-                />
-                Đủ mã vận đơn
-              </label>
             </div>
           </div>
       </div>
@@ -1521,6 +1623,106 @@ export default function OrderDetailPage({ adminApiBaseUrl, loginUrl }: OrderDeta
           </div>
         )}
       </div>
+
+      <div className="mt-6 rounded-xl border border-zinc-200 bg-white shadow-sm">
+        <div className="border-b border-zinc-200 bg-orange-400 px-4 py-3 text-white">
+          <h2 className="font-semibold">Lịch sử thao tác</h2>
+        </div>
+        {order.activityLogs.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-zinc-400">Chưa có thao tác nào.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-zinc-200 text-xs font-medium text-zinc-500">
+                <tr>
+                  <th className="px-4 py-2">Thời gian</th>
+                  <th className="px-4 py-2">Nội dung</th>
+                  <th className="px-4 py-2">Người thực hiện</th>
+                  <th className="px-4 py-2">Quyền hạn</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.activityLogs.map((a) => (
+                  <tr key={a.id} className="border-b border-zinc-100 last:border-0">
+                    <td className="px-4 py-2.5 text-zinc-500">{formatDateTime(a.performedAtUtc)}</td>
+                    <td className="px-4 py-2.5 text-zinc-700">{a.description}</td>
+                    <td className="px-4 py-2.5 text-zinc-700">{a.performedByUsername ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-zinc-700">{a.performedByRole >= 0 ? roleLabel(a.performedByRole) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {confirmOutOfStockKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
+            <p className="text-sm text-zinc-700">
+              Đánh dấu{" "}
+              <span className="font-semibold">
+                &quot;{productRows.find((r) => r.key === confirmOutOfStockKey)?.productName || "sản phẩm này"}&quot;
+              </span>{" "}
+              hết hàng — số lượng sẽ về 0 và trừ khỏi tổng tiền đơn?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmOutOfStockKey(null)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={() => {
+                  toggleOutOfStock(confirmOutOfStockKey);
+                  setConfirmOutOfStockKey(null);
+                }}
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600"
+              >
+                Đánh dấu hết hàng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDepositOrPay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
+            <p className="text-sm text-zinc-700">
+              {confirmDepositOrPay === "deposit" ? (
+                <>
+                  Đặt cọc hộ khách <span className="font-semibold">{order.username}</span> số tiền{" "}
+                  <span className="font-semibold text-blue-600">{formatMoney(order.depositAmount)} đ</span> — trừ thẳng vào ví
+                  của khách?
+                </>
+              ) : (
+                <>
+                  Thanh toán hộ khách <span className="font-semibold">{order.username}</span> số tiền còn lại{" "}
+                  <span className="font-semibold text-blue-600">{formatMoney(order.remainingAmount)} đ</span> — trừ thẳng vào
+                  ví của khách?
+                </>
+              )}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDepositOrPay(null)}
+                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={() => (confirmDepositOrPay === "deposit" ? handleDeposit(accessToken) : handlePay(accessToken))}
+                disabled={savingDeposit || savingPay}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {savingDeposit || savingPay ? "Đang xử lý..." : confirmDepositOrPay === "deposit" ? "Xác nhận đặt cọc" : "Xác nhận thanh toán"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

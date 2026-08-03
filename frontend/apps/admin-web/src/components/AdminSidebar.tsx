@@ -62,6 +62,11 @@ function CalculatorIcon({ className }: { className?: string }) {
   );
 }
 
+/** So khớp đúng path (không chỉ prefix) — "/warehousechina" không được khớp nhầm "/warehousechinaexport". */
+function isPathActive(currentPath: string, href: string): boolean {
+  return currentPath === href || currentPath.startsWith(`${href}/`);
+}
+
 interface SidebarItem {
   label: string;
   href?: string;
@@ -115,19 +120,22 @@ const GROUPS: SidebarGroup[] = [
     items: [
       { label: "Đơn hàng mua hộ", href: "/orders" },
       { label: "Tạo đơn thủ công", href: "/createmainorder" },
-      { label: "Tạo đơn ký gửi" },
-      { label: "Xử lý khiếu nại" },
+      // Tạm ẩn — chưa xây trang.
+      // { label: "Tạo đơn ký gửi" },
+      // { label: "Xử lý khiếu nại" },
     ],
   },
   {
     title: "NGHIỆP VỤ KHO",
     icon: <WarehouseIcon className="h-4 w-4" />,
     items: [
-      { label: "Gán kiện ký gửi" },
-      { label: "Tracking" },
-      { label: "Kho Trung Quốc" },
-      { label: "Kho Việt Nam" },
-      { label: "Quản lý kiện hàng" },
+      // Tạm ẩn — chưa xây trang.
+      // { label: "Gán kiện ký gửi" },
+      // { label: "Tracking" },
+      { label: "Kiểm kho Trung Quốc", href: "/warehousechina" },
+      { label: "Xuất kho Trung Quốc", href: "/warehousechinaexport" },
+      { label: "Kiểm kho Việt Nam", href: "/warehousevietnam" },
+      { label: "Quản lý mã vận đơn", href: "/trackingcodes" },
     ],
   },
   {
@@ -179,11 +187,11 @@ export default function AdminSidebar({ currentPath, mobileOpen, onCloseMobile, o
             </p>
             <ul className="space-y-1">
               {group.items.map((item) => {
-                const isActive = !!item.href && currentPath.startsWith(item.href);
+                const isActive = !!item.href && isPathActive(currentPath, item.href);
 
                 if (item.children) {
                   const hasActiveChild = item.children.some(
-                    (child) => !!child.href && currentPath.startsWith(child.href),
+                    (child) => !!child.href && isPathActive(currentPath, child.href),
                   );
                   const isOpen = expanded.has(item.label) || hasActiveChild;
                   return (
@@ -199,7 +207,7 @@ export default function AdminSidebar({ currentPath, mobileOpen, onCloseMobile, o
                       {isOpen && (
                         <ul className="mt-1 space-y-1 pl-3">
                           {item.children.map((child) => {
-                            const isChildActive = !!child.href && currentPath.startsWith(child.href);
+                            const isChildActive = !!child.href && isPathActive(currentPath, child.href);
 
                             if (!child.href) {
                               return (

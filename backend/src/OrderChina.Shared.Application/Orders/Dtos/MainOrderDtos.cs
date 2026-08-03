@@ -131,9 +131,13 @@ public record MainOrderTrackingCodeItem(
     DateTime CreatedAtUtc,
     string? CreatedByUsername,
     DateTime? ArrivedChinaWarehouseAtUtc,
+    string? ArrivedChinaWarehouseByUsername,
     DateTime? InTransitToVietnamAtUtc,
+    string? InTransitToVietnamByUsername,
     DateTime? ArrivedVietnamWarehouseAtUtc,
-    DateTime? DeliveredToCustomerAtUtc);
+    string? ArrivedVietnamWarehouseByUsername,
+    DateTime? DeliveredToCustomerAtUtc,
+    string? DeliveredToCustomerByUsername);
 
 /// <summary><paramref name="Id"/>: null = dòng mới thêm; có giá trị = dòng đã tồn tại, giữ nguyên CreatedAtUtc/các mốc ngày trạng thái cũ khi cập nhật.</summary>
 public record MainOrderTrackingCodeInput(
@@ -148,6 +152,100 @@ public record MainOrderTrackingCodeInput(
 
 public record UpdateMainOrderTrackingCodesRequest(IReadOnlyList<MainOrderTrackingCodeInput> TrackingCodes, string? RowVersion = null);
 
+/// <summary>
+/// Trang "Kiểm hàng kho Trung Quốc" — nhân viên kho quét/nhập mã vận đơn (không biết trước đơn nào), nhập
+/// cân nặng + kích thước rồi lưu. Server tự tra ra MainOrder tương ứng qua Code, cập nhật cả kiện hàng lẫn
+/// đơn hàng (cân nặng tổng, phí vận chuyển, trạng thái) trong 1 request.
+/// </summary>
+public record CheckInTrackingCodeChinaWarehouseRequest(
+    string Code,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    string? Note);
+
+/// <summary>
+/// Trang "Xuất kho Trung Quốc" — quét mã vận đơn đã kiểm hàng (ArrivedChinaWarehouse) để đánh dấu rời kho
+/// TQ, chuyển sang InTransitToVietnam — vẫn cho sửa lại cân/kích thước (cân lại lần cuối trước khi xuất
+/// kho nếu cần), giống hệt CheckInTrackingCodeChinaWarehouseRequest.
+/// </summary>
+public record ExportTrackingCodeChinaWarehouseRequest(
+    string Code,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    string? Note);
+
+/// <summary>
+/// Trang "Kiểm kho Việt Nam" — quét mã vận đơn đã xuất kho TQ (InTransitToVietnam) để xác nhận về tới kho
+/// VN, chuyển sang ArrivedVietnamWarehouse — vẫn cho sửa lại cân/kích thước (cân lại khi về VN nếu lệch so
+/// với lúc xuất TQ), giống hệt CheckInTrackingCodeChinaWarehouseRequest.
+/// </summary>
+public record CheckInTrackingCodeVietnamWarehouseRequest(
+    string Code,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    string? Note);
+
+/// <summary>
+/// Trang "Kiểm hàng kho Trung Quốc" — tra cứu thuần (không sửa dữ liệu) ngay sau khi quét mã, để hiển thị
+/// ngữ cảnh đơn hàng (khách, dịch vụ, số sản phẩm) trước khi staff nhập cân/kích thước và bấm Cập nhật.
+/// </summary>
+public record TrackingCodeLookupDto(
+    string Code,
+    int Status,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    string? Note,
+    Guid OrderId,
+    string OrderCode,
+    int OrderType,
+    string Username,
+    string? PhoneNumber,
+    bool RequestCheckProduct,
+    bool RequestPackaging,
+    bool RequestInsurance,
+    bool RequestHomeDelivery,
+    int ProductTypeCount,
+    int ProductQuantityTotal);
+
+public record TrackingCodeLookupResult(bool Succeeded, string? Error, TrackingCodeLookupDto? Data);
+
+/// <summary>Trang "Quản lý kiện hàng" — danh sách mã vận đơn của mọi đơn, lọc theo trạng thái + tìm theo mã vận đơn/mã đơn/username.</summary>
+public record TrackingCodeListItem(
+    Guid Id,
+    string Code,
+    Guid OrderId,
+    long OrderNumber,
+    string OrderCode,
+    int OrderType,
+    string Username,
+    decimal WeightKg,
+    decimal LengthCm,
+    decimal WidthCm,
+    decimal HeightCm,
+    decimal VolumetricWeightKg,
+    int Status,
+    string? Note,
+    DateTime CreatedAtUtc,
+    string? CreatedByUsername,
+    DateTime? ArrivedChinaWarehouseAtUtc,
+    string? ArrivedChinaWarehouseByUsername,
+    DateTime? InTransitToVietnamAtUtc,
+    string? InTransitToVietnamByUsername,
+    DateTime? ArrivedVietnamWarehouseAtUtc,
+    string? ArrivedVietnamWarehouseByUsername,
+    DateTime? DeliveredToCustomerAtUtc,
+    string? DeliveredToCustomerByUsername);
+
+public record TrackingCodeListResult(IReadOnlyList<TrackingCodeListItem> Items, int TotalCount, int Page, int PageSize);
+
 public record MainOrderPaymentHistoryItem(
     Guid Id,
     int Type,
@@ -156,6 +254,15 @@ public record MainOrderPaymentHistoryItem(
     Guid PerformedByUserId,
     string? PerformedByUsername,
     DateTime PaidAtUtc);
+
+/// <summary>Trang chi tiết đơn — mục "Lịch sử thao tác", ghi lại mọi hành động làm thay đổi dữ liệu đơn.</summary>
+public record MainOrderActivityLogItem(
+    Guid Id,
+    string Description,
+    Guid PerformedByUserId,
+    string? PerformedByUsername,
+    int PerformedByRole,
+    DateTime PerformedAtUtc);
 
 public record MainOrderDetail(
     Guid Id,
@@ -208,6 +315,7 @@ public record MainOrderDetail(
     IReadOnlyList<MainOrderPaymentHistoryItem> PaymentHistories,
     IReadOnlyList<MainOrderShopCodeItem> ShopCodes,
     IReadOnlyList<MainOrderTrackingCodeItem> TrackingCodes,
+    IReadOnlyList<MainOrderActivityLogItem> ActivityLogs,
     /// <summary>Token concurrency (giá trị "xmin" của Postgres) — client gửi lại nguyên giá trị này ở các
     /// request cập nhật để backend phát hiện đơn đã bị người khác sửa từ lúc tải trang, tránh ghi đè mất dữ liệu.</summary>
     string RowVersion);
