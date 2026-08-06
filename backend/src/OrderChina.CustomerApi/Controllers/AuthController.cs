@@ -22,17 +22,20 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<RegisterCustomerRequest> _registerValidator;
+    private readonly IValidator<ChangePasswordRequest> _changePasswordValidator;
     private readonly IHostEnvironment _environment;
 
     public AuthController(
         IAuthService authService,
         IValidator<LoginRequest> loginValidator,
         IValidator<RegisterCustomerRequest> registerValidator,
+        IValidator<ChangePasswordRequest> changePasswordValidator,
         IHostEnvironment environment)
     {
         _authService = authService;
         _loginValidator = loginValidator;
         _registerValidator = registerValidator;
+        _changePasswordValidator = changePasswordValidator;
         _environment = environment;
     }
 
@@ -102,6 +105,33 @@ public class AuthController : ControllerBase
         {
             Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = CookiePath });
             return Unauthorized(new { error = result.Error });
+        }
+
+        SetRefreshCookie(result.Tokens.RefreshToken, result.Tokens.RefreshTokenExpiresAtUtc);
+        return Ok(new { accessToken = result.Tokens.AccessToken, expiresAtUtc = result.Tokens.AccessTokenExpiresAtUtc });
+    }
+
+    /// <summary>Trang "Tài khoản" — khách tự đổi mật khẩu, không cần nhập mật khẩu cũ (chỉ cần đang đăng
+    /// nhập hợp lệ). Cấp lại token mới cho phiên hiện tại luôn (đổi mật khẩu làm SecurityStamp đổi, không
+    /// cấp lại sẽ bị đăng xuất oan).</summary>
+    [HttpPost("change-password")]
+    [EnableRateLimiting("auth")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto dto, CancellationToken cancellationToken)
+    {
+        var request = new ChangePasswordRequest(GetCurrentUserId(), dto.NewPassword);
+
+        var validation = await _changePasswordValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return ValidationProblem(new ValidationProblemDetails(validation.ToDictionary()));
+        }
+
+        var result = await _authService.ChangePasswordAsync(request, TokenAudience.CustomerApi, GetClientIp(), cancellationToken);
+
+        if (!result.Succeeded || result.Tokens is null)
+        {
+            return BadRequest(new { error = result.Error });
         }
 
         SetRefreshCookie(result.Tokens.RefreshToken, result.Tokens.RefreshTokenExpiresAtUtc);
@@ -186,3 +216,5 @@ public record RegisterRequestDto(string Username, string Email, string Password,
 public record LoginRequestDto(string Username, string Password, string? TwoFactorCode);
 
 public record VerifyTwoFactorDto(string Code);
+
+public record ChangePasswordRequestDto(string NewPassword);

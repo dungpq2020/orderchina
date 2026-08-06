@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrderChina.Shared.Application.Orders;
@@ -23,6 +24,87 @@ public class MainOrdersController : ControllerBase
     {
         var result = await _mainOrderService.GetCustomerOrdersAsync(GetCurrentUserId(), page, pageSize, cancellationToken);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Trang "Chi tiết đơn hàng" của customer-web — chỉ đọc, khách chỉ xem được đơn của chính mình.
+    /// Không trả nguyên <see cref="Dtos.MainOrderDetail"/> (dùng chung với admin) — DTO đó còn chứa dữ liệu
+    /// nội bộ (giá mua thực tế, hoa hồng, nhân viên phụ trách, lịch sử thao tác...) không được lộ cho khách.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _mainOrderService.GetByIdAsync(id, cancellationToken);
+        if (!result.Succeeded || result.Order is null || result.Order.UserId != GetCurrentUserId())
+        {
+            return NotFound(new { error = "Không tìm thấy đơn hàng." });
+        }
+
+        var order = result.Order;
+        return Ok(new
+        {
+            order.Id,
+            order.OrderCode,
+            order.Username,
+            order.CreationType,
+            order.Status,
+            order.ChinaWarehouseName,
+            order.VietnamWarehouseName,
+            order.ShippingMethodName,
+            Products = order.Products.Select(p => new
+            {
+                p.Id,
+                p.ImageUrl,
+                p.ProductLink,
+                p.ProductName,
+                p.Attributes,
+                p.UnitPriceCny,
+                p.Quantity,
+                p.Note,
+            }),
+            order.ExchangeRateApplied,
+            order.ProductAmountCny,
+            order.ProductAmount,
+            order.PurchaseFeeAmount,
+            order.ShippingFeeCn,
+            order.TotalWeightKg,
+            order.ShippingFeeVn,
+            order.RequestCheckProduct,
+            order.CheckProductFeeAmount,
+            order.RequestPackaging,
+            order.PackagingFeeAmount,
+            order.RequestInsurance,
+            order.InsuranceFeeAmount,
+            order.RequestHomeDelivery,
+            order.HomeDeliveryFeeAmount,
+            order.TotalAmount,
+            order.DepositAmount,
+            order.AmountPaid,
+            order.RemainingAmount,
+            order.Note,
+            order.CreatedAtUtc,
+            PaymentHistories = order.PaymentHistories.Select(h => new
+            {
+                h.Id,
+                h.Type,
+                h.Method,
+                h.Amount,
+                h.PaidAtUtc,
+            }),
+            TrackingCodes = order.TrackingCodes.Select(t => new
+            {
+                t.Id,
+                t.Code,
+                t.WeightKg,
+                t.LengthCm,
+                t.WidthCm,
+                t.HeightCm,
+                t.VolumetricWeightKg,
+                t.Status,
+                t.Note,
+            }),
+            order.Timeline,
+        });
     }
 
     [HttpPost("{id:guid}/deposit")]

@@ -143,7 +143,20 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     ),
   },
   {
+    label: "Lịch sử giao dịch",
+    href: "/transactions",
+    color: "bg-zinc-100",
+    icon: (
+      <>
+        <rect x="3" y="6" width="18" height="13" rx="1.5" fill="#BBF7D0" stroke="#15803D" strokeWidth={1.3} />
+        <path d="M3 10h18" stroke="#15803D" strokeWidth={1.3} />
+        <circle cx="16.5" cy="14.5" r="1.7" fill="#15803D" />
+      </>
+    ),
+  },
+  {
     label: "Tài khoản",
+    href: "/account",
     color: "bg-zinc-100",
     icon: (
       <>
@@ -159,9 +172,10 @@ interface CustomerSidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
   onComingSoon: (label: string) => void;
+  onLogout: () => void;
 }
 
-export default function CustomerSidebar({ currentPath, mobileOpen, onCloseMobile, onComingSoon }: CustomerSidebarProps) {
+export default function CustomerSidebar({ currentPath, mobileOpen, onCloseMobile, onComingSoon, onLogout }: CustomerSidebarProps) {
   const content = (
     <div className="flex h-full flex-col bg-white">
       <div className="flex items-center justify-center border-b border-zinc-200 px-4 py-4">
@@ -214,6 +228,20 @@ export default function CustomerSidebar({ currentPath, mobileOpen, onCloseMobile
             </Link>
           );
         })}
+
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex w-full flex-col items-center gap-1.5 border-b border-zinc-100 px-2 py-3 text-center text-zinc-600 transition hover:bg-red-50"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100">
+            <svg viewBox="0 0 24 24" className="h-6 w-6">
+              <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="#DC2626" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M15 16l4-4-4-4M19 12H9" fill="none" stroke="#DC2626" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <span className="text-xs font-medium text-red-600">Đăng xuất</span>
+        </button>
       </nav>
     </div>
   );

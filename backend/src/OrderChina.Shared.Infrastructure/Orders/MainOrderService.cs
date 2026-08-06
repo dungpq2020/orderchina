@@ -2240,7 +2240,23 @@ public class MainOrderService : IMainOrderService
                     userRoles.GetValueOrDefault(a.PerformedByUserId, -1),
                     a.PerformedAtUtc))
                 .ToList(),
-            GetRowVersion(order));
+            GetRowVersion(order),
+            BuildTimeline(
+                order.CreationType,
+                order.Status,
+                order.CreatedAtUtc,
+                order.AwaitingDepositAtUtc,
+                order.DepositedAtUtc,
+                order.PurchasedAtUtc,
+                order.AwaitingShopShipmentAtUtc,
+                order.ShopShippedAtUtc,
+                order.ArrivedChinaWarehouseAtUtc,
+                order.InTransitToVietnamAtUtc,
+                order.ArrivedVietnamWarehouseAtUtc,
+                order.PaidAtUtc,
+                order.CompletedAtUtc,
+                order.ComplaintAtUtc,
+                order.CancelledAtUtc));
     }
 
     /// <summary>Ghi 1 dòng lịch sử thao tác cho đơn — gọi ở MỌI method làm thay đổi dữ liệu đơn, để trang chi tiết hiển thị "Lịch sử thao tác" giống Lịch sử thanh toán. Chưa SaveChanges ngay — dùng chung transaction/SaveChanges của method gọi nó.</summary>

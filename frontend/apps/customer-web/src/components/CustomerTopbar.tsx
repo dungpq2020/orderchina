@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 function formatMoney(value: number): string {
   return Math.round(value).toLocaleString("vi-VN");
 }
@@ -24,7 +26,6 @@ export default function CustomerTopbar({
   exchangeRate,
   hotline,
   onOpenMobileMenu,
-  onComingSoon,
   onLogout,
 }: CustomerTopbarProps) {
   const displayName = username;
@@ -42,16 +43,17 @@ export default function CustomerTopbar({
             </span>
             {displayName}
           </button>
-          <div className="absolute right-0 z-10 mt-1 hidden w-40 rounded-lg border border-zinc-200 bg-white py-1 text-zinc-700 shadow-lg group-hover:block">
-            <button
-              onClick={() => onComingSoon("Tài khoản")}
-              className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-50"
-            >
-              Tài khoản
-            </button>
-            <button onClick={onLogout} className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-50">
-              Đăng xuất
-            </button>
+          {/* Bọc ngoài absolute + pt-1 (không phải mt-1) để vùng đệm phía trên menu vẫn thuộc box được
+              :hover — margin thì không, sẽ tạo khoảng trống làm mất hover giữa nút và menu khi rê chuột xuống. */}
+          <div className="absolute right-0 z-10 hidden w-40 pt-1 group-hover:block">
+            <div className="rounded-lg border border-zinc-200 bg-white py-1 text-zinc-700 shadow-lg">
+              <Link href="/account" className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-50">
+                Tài khoản
+              </Link>
+              <button onClick={onLogout} className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-50">
+                Đăng xuất
+              </button>
+            </div>
           </div>
         </div>
       </div>

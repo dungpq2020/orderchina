@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuthenticatedList } from "@orderchina/ui/hooks/useAuthenticatedList";
 import { formatDateTime } from "@orderchina/ui/utils/formatDateTime";
 import CustomerLayout from "./CustomerLayout";
@@ -270,7 +271,7 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
       hotline={me.hotline}
       onLogout={logout}
     >
-      {(onComingSoon) => (
+      {() => (
         <div>
           <h1 className="mb-4 text-xl font-semibold text-zinc-900">Đơn hàng của tôi ({orders.totalCount})</h1>
 
@@ -391,12 +392,12 @@ export default function OrdersPage({ customerApiBaseUrl, adminApiBaseUrl, loginU
                             {cancelingOrderId === o.id ? "Đang xử lý..." : "Huỷ đơn"}
                           </button>
                         )}
-                        <button
-                          onClick={() => onComingSoon("Chi tiết đơn hàng")}
+                        <Link
+                          href={`/orders/${o.id}`}
                           className="inline-block rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-100"
                         >
                           Chi tiết
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>

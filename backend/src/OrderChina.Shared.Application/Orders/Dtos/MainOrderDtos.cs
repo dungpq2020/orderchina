@@ -328,7 +328,9 @@ public record MainOrderDetail(
     IReadOnlyList<MainOrderActivityLogItem> ActivityLogs,
     /// <summary>Token concurrency (giá trị "xmin" của Postgres) — client gửi lại nguyên giá trị này ở các
     /// request cập nhật để backend phát hiện đơn đã bị người khác sửa từ lúc tải trang, tránh ghi đè mất dữ liệu.</summary>
-    string RowVersion);
+    string RowVersion,
+    /// <summary>Các mốc trạng thái đơn đã đi qua — dùng cho khối "Tiến trình", giống hình dạng dữ liệu ở MainOrderListItem.</summary>
+    IReadOnlyList<MainOrderTimelineEntry> Timeline);
 
 public record GetMainOrderResult(bool Succeeded, string? Error, MainOrderDetail? Order);
 

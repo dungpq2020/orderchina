@@ -225,6 +225,26 @@ public class AuthService : IAuthService
         return new AuthResult(true, tokens, null);
     }
 
+    public async Task<AuthResult> ChangePasswordAsync(ChangePasswordRequest request, TokenAudience audience, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+        if (user is null)
+        {
+            return new AuthResult(false, null, "Không tìm thấy tài khoản.");
+        }
+
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var changeResult = await _userManager.ResetPasswordAsync(user, resetToken, request.NewPassword);
+        if (!changeResult.Succeeded)
+        {
+            var error = string.Join("; ", changeResult.Errors.Select(e => e.Description));
+            return new AuthResult(false, null, error);
+        }
+
+        var tokens = await IssueTokensAsync(user, audience, ipAddress, cancellationToken);
+        return new AuthResult(true, tokens, null);
+    }
+
     public async Task<Enable2faResponse> EnableTwoFactorAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByIdAsync(userId.ToString())

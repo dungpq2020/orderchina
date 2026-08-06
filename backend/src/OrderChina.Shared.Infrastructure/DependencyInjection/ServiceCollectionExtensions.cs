@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICustomerDirectoryService, CustomerDirectoryService>();
+        services.AddScoped<ICustomerProfileService, CustomerProfileService>();
         services.AddScoped<IWarehouseDirectoryService, WarehouseDirectoryService>();
         services.AddScoped<IShippingMethodDirectoryService, ShippingMethodDirectoryService>();
         services.AddScoped<IStaffDirectoryService, StaffDirectoryService>();

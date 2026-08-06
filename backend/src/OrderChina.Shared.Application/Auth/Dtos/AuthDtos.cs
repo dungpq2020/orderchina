@@ -6,7 +6,7 @@ public record RegisterCustomerRequest(string Username, string Email, string Pass
 
 public record RefreshRequest(string RefreshToken, string? IpAddress);
 
-public record ChangePasswordRequest(Guid UserId, string CurrentPassword, string NewPassword);
+public record ChangePasswordRequest(Guid UserId, string NewPassword);
 
 public record TokenResponse(string AccessToken, DateTime AccessTokenExpiresAtUtc, string RefreshToken, DateTime RefreshTokenExpiresAtUtc);
 

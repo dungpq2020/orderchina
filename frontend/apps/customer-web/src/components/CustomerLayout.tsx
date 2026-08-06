@@ -48,6 +48,7 @@ export default function CustomerLayout({
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
         onComingSoon={showComingSoon}
+        onLogout={onLogout}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
