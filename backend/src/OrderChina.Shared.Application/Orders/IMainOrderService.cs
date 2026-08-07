@@ -8,6 +8,13 @@ public interface IMainOrderService
 
     Task<CreateMainOrderResult> CreateAsync(CreateMainOrderRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Khách tự chốt đơn từ giỏ hàng (extension chọn sẵn sản phẩm + giá thực) — CreationType Extension,
+    /// bỏ qua bước Chờ báo giá (khởi tạo thẳng AwaitingDeposit), khác với <see cref="CreateAsync"/> (staff
+    /// tạo hộ, CreationType Manual, khởi tạo AwaitingQuote).
+    /// </summary>
+    Task<CreateMainOrderResult> CreateFromCartAsync(CreateMainOrderRequest request, Guid actingUserId, CancellationToken cancellationToken = default);
+
     /// <summary>Trang "Đơn hàng mua hộ" (admin) — lọc theo trạng thái/NV đặt hàng/NV kinh doanh/khoảng ngày
     /// tạo đơn, tìm theo mã đơn, tài khoản, SĐT, mã vận đơn hoặc mã shop trong 1 ô search.</summary>
     Task<MainOrderListResult> GetListAsync(

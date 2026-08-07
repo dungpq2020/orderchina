@@ -1,0 +1,101 @@
+body {
+  width: 260px;
+  margin: 0;
+  padding: 16px;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #18181b;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.logo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #f97316);
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.state.hidden {
+  display: none;
+}
+
+.state {
+  font-size: 13px;
+  color: #52525b;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #52525b;
+  margin: 10px 0 4px;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+button,
+.btn-primary,
+.btn-secondary {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+
+#login-submit,
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  margin-top: 12px;
+}
+
+.btn-secondary {
+  background: #f4f4f5;
+  color: #18181b;
+  margin-top: 8px;
+}
+
+.welcome {
+  font-size: 13px;
+  margin: 0 0 4px;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.error.hidden {
+  display: none;
+}

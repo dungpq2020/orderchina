@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OrderChina.Shared.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using OrderChina.Shared.Infrastructure.Persistence;
 namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260807061335_AddCartTables")]
+    partial class AddCartTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1395,22 +1398,6 @@ namespace OrderChina.Shared.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("platform");
-
-                    b.Property<bool>("RequestCheckProduct")
-                        .HasColumnType("boolean")
-                        .HasColumnName("request_check_product");
-
-                    b.Property<bool>("RequestHomeDelivery")
-                        .HasColumnType("boolean")
-                        .HasColumnName("request_home_delivery");
-
-                    b.Property<bool>("RequestInsurance")
-                        .HasColumnType("boolean")
-                        .HasColumnName("request_insurance");
-
-                    b.Property<bool>("RequestPackaging")
-                        .HasColumnType("boolean")
-                        .HasColumnName("request_packaging");
 
                     b.Property<string>("ShopLink")
                         .HasMaxLength(2000)

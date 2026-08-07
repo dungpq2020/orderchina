@@ -45,6 +45,8 @@ public class AppDbContext : IdentityUserContext<ApplicationUser, Guid>, IDataPro
     public DbSet<MainOrderActivityLog> MainOrderActivityLogs => Set<MainOrderActivityLog>();
     public DbSet<MainOrderShopCode> MainOrderShopCodes => Set<MainOrderShopCode>();
     public DbSet<TrackingCode> TrackingCodes => Set<TrackingCode>();
+    public DbSet<OrderShopTemp> OrderShopTemps => Set<OrderShopTemp>();
+    public DbSet<ProductTemp> ProductTemps => Set<ProductTemp>();
 
     public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys => Set<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>();
 

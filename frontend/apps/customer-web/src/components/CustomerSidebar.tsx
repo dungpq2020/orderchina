@@ -27,6 +27,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
   {
     label: "Giỏ hàng",
+    href: "/cart",
     color: "bg-zinc-100",
     icon: (
       <>

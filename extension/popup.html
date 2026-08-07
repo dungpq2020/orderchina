@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>OrderChina</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="header">
+      <span class="logo-dot"></span>
+      <h1>OrderChina</h1>
+    </div>
+
+    <div id="loading" class="state">Đang kiểm tra đăng nhập...</div>
+
+    <form id="login-form" class="state hidden">
+      <label>Tài khoản</label>
+      <input type="text" id="username" autocomplete="username" required />
+
+      <label>Mật khẩu</label>
+      <input type="password" id="password" autocomplete="current-password" required />
+
+      <p id="login-error" class="error hidden"></p>
+
+      <button type="submit" id="login-submit">Đăng nhập</button>
+    </form>
+
+    <div id="logged-in" class="state hidden">
+      <p class="welcome">Xin chào, <strong id="welcome-username"></strong></p>
+      <a id="open-cart" href="#" target="_blank" class="btn-primary">Xem giỏ hàng</a>
+      <button id="logout" class="btn-secondary">Đăng xuất</button>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

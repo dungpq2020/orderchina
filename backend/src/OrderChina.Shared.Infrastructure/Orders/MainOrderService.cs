@@ -54,7 +54,21 @@ public class MainOrderService : IMainOrderService
             pricing.DepositAmount);
     }
 
-    public async Task<CreateMainOrderResult> CreateAsync(CreateMainOrderRequest request, Guid actingUserId, CancellationToken cancellationToken = default)
+    public Task<CreateMainOrderResult> CreateAsync(CreateMainOrderRequest request, Guid actingUserId, CancellationToken cancellationToken = default) =>
+        // Trang "Đơn hàng mua hộ" (admin) — staff tạo hộ khách, luôn Manual, khởi tạo ở Chờ báo giá.
+        CreateOrderCoreAsync(request, MainOrderCreationType.Manual, MainOrderStatus.AwaitingQuote, actingUserId, cancellationToken);
+
+    public Task<CreateMainOrderResult> CreateFromCartAsync(CreateMainOrderRequest request, Guid actingUserId, CancellationToken cancellationToken = default) =>
+        // Khách tự chốt đơn từ giỏ hàng — đã có giá thực lúc thêm vào giỏ nên bỏ qua Chờ báo giá,
+        // khởi tạo thẳng AwaitingDeposit để khách đặt cọc ngay.
+        CreateOrderCoreAsync(request, MainOrderCreationType.Extension, MainOrderStatus.AwaitingDeposit, actingUserId, cancellationToken);
+
+    private async Task<CreateMainOrderResult> CreateOrderCoreAsync(
+        CreateMainOrderRequest request,
+        MainOrderCreationType creationType,
+        MainOrderStatus initialStatus,
+        Guid actingUserId,
+        CancellationToken cancellationToken = default)
     {
         var validationError = ValidateProducts(request.Products);
         if (validationError is not null)
@@ -97,8 +111,7 @@ public class MainOrderService : IMainOrderService
             Id = Guid.NewGuid(),
             UserId = customer.Id,
             OrderType = FeeOrderType.PurchaseOnBehalf,
-            // Trang này chỉ dành cho staff tạo hộ khách — luôn là Manual, khởi tạo ở trạng thái Chờ báo giá.
-            CreationType = MainOrderCreationType.Manual,
+            CreationType = creationType,
             ChinaWarehouseId = request.ChinaWarehouseId,
             VietnamWarehouseId = request.VietnamWarehouseId,
             ShippingMethodId = request.ShippingMethodId,
@@ -121,7 +134,7 @@ public class MainOrderService : IMainOrderService
             TotalAmount = pricing.TotalAmount,
             MinDepositPercentApplied = pricing.MinDepositPercentApplied,
             DepositAmount = pricing.DepositAmount,
-            Status = MainOrderStatus.AwaitingQuote,
+            Status = initialStatus,
             Note = request.Note,
             CreatedAtUtc = DateTime.UtcNow,
             CreatedByUserId = actingUserId,
